@@ -1,0 +1,56 @@
+// build.gradle
+
+
+project(":simple") {
+    apply plugin: 'cpp'
+
+    model {
+        buildTypes {
+            debug
+            release
+        }
+
+        binaries {
+            all {
+                if (toolChain in Gcc && buildType == buildTypes.debug) {
+                    cppCompiler.args "-g"
+                }
+            }
+        }
+        
+        components {
+            simple(NativeLibrarySpec)
+        }
+    }
+        
+}
+
+project(':testsimple') {
+    apply plugin: 'cpp'
+    
+    model {
+        buildTypes {
+            debug
+            release
+        }
+        
+        binaries {
+            all {
+                if (toolChain in Gcc && buildType == buildTypes.debug) {
+                    cppCompiler.args "-g"
+                }
+            }
+        }
+        
+        components {
+            
+            testsimple(NativeExecutableSpec) {
+                sources {
+                    cpp {
+                        lib project: ':simple', library: 'simple', linkage: 'static'
+                    }
+                }
+            }
+        }
+    }
+}
