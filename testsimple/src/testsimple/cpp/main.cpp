@@ -92,86 +92,90 @@ void test_main_constructor() {
 }
 
 void test_int_basics() {
-
-    Fixnum<32> from_short { (int16_t) 400 };
-    assert(from_short == Fixnum<32> { 400 });
+    using namespace decode;
     
-    Fixnum<32> one { 200 };
+    Fixnum<32> from_short(narrow_cast<int16_t>(400));
+    assert(from_short == Fixnum<32>(400));
+    
+    Fixnum<32> one(200);
     assert(!one.is_negative());
     assert(one.str() == "200");
     
-    Fixnum<32> two { -200 };
+    Fixnum<32> two(-200);
     assert(two.is_negative());
     assert(one != two);
     assert(two.str() == "-200");
     
-    Fixnum<32> eq_one = { 200 };
+    Fixnum<32> eq_one(200);
     assert(one == eq_one);
     assert(eq_one.str() == "200");
+
+    Fixnum<64> from_long(700000L);
+    assert(from_long.str() == "700000");
 }
 
 void test_is_lowest_max() {
-    Fixnum<3> small3 { -4 };
+    Fixnum<3> small3(-4);
     assert(small3.is_lowest());
     assert(small3 == Fixnum<3>::lowest());
 
-    Fixnum<3> large3 { 3 };
+    Fixnum<3> large3(3);
     assert(large3.is_max());
     assert(large3 == Fixnum<3>::max());
 
-    Fixnum<3> mid3 = { -1 };
+    Fixnum<3> mid3(-1);
     assert(!mid3.is_lowest());
     assert(!mid3.is_max());
 
-    Fixnum<8> small8 { -128 };
+    Fixnum<8> small8(-128);
     assert(small8.is_lowest());
     assert(small8 == Fixnum<8>::lowest());
 
-    Fixnum<8> large8 { 127 };
+    Fixnum<8> large8(127);
     assert(large8.is_max());
     assert(large8 == Fixnum<8>::max());
 
-    Fixnum<8> mid8 { 25 };
+    Fixnum<8> mid8(25);
     assert(!mid8.is_lowest());
     assert(!mid8.is_max());
 
-    Fixnum<32> small32 { std::numeric_limits<int32_t>::lowest() };
+    Fixnum<32> small32(std::numeric_limits<int32_t>::lowest());
     assert(small32.is_lowest());
     assert(small32 == Fixnum<32>::lowest());
 
-    Fixnum<32> large32 { std::numeric_limits<int32_t>::max() };
+    Fixnum<32> large32(std::numeric_limits<int32_t>::max());
     assert(large32.is_max());
     assert(large32 == Fixnum<32>::max());
 
-    Fixnum<32> mid32 { -1234567 };
+    Fixnum<32> mid32(-1234567);
     assert(!mid32.is_lowest());
     assert(!mid32.is_max());
 }
 
 void test_complement() {
-    Fixnum<3> val { 3 };
+    Fixnum<3> val(3);
     assert(val.str() == "3");
     assert(val.complement().str() == "-3");
 
-    Fixnum<3> val_min { -4 };
+    Fixnum<3> val_min(-4);
     assert(val_min.str() == "-4");
     assert(val_min.complement().str() == "-4");
 }
 
 void test_cast() {
-    Fixnum<3> val3 { 3 };
+    Fixnum<3> val3(3);
     Fixnum<32> val32 = fixnum_cast<32>(val3);
     assert(val3.str() == val32.str());
 
-    Fixnum<3> neg_val3 { -3 };
+    Fixnum<3> neg_val3(-3);
     Fixnum<32> neg_val32 = fixnum_cast<32>(neg_val3);
     assert(neg_val3.str() == neg_val32.str());
 
-    Fixnum<3> min_val3 { -4 };
+    Fixnum<3> min_val3(-4);
     Fixnum<32> min_val32 = fixnum_cast<32>(min_val3);
     assert(min_val32.str() == "-4");
 
-    Fixnum<32> neg4 { -4 };
+    Fixnum<32> neg4(-4);
     assert(neg4 == min_val32);
 }
 
@@ -210,43 +214,132 @@ void test_sign_extend() {
 }
 
 void test_add() {
-    Fixnum<17> one { 5 };
-    one += Fixnum<17> { 5 };
-    assert(one == Fixnum<17> { 10 });
+    Fixnum<17> one(5);
+    one += Fixnum<17>(5);
+    assert(one == Fixnum<17>(10));
 
-    Fixnum<19> two { -217 };
-    two += Fixnum<19> { 75 };
-    assert(two == Fixnum<19> { -142 });
+    Fixnum<19> two(-217);
+    two += Fixnum<19>(75);
+    assert(two == Fixnum<19>(-142));
 
-    assert((Fixnum<23> { 450 } + Fixnum<23> { 900 }) == Fixnum<23> { 1350 });
+    assert((Fixnum<23>(450) + Fixnum<23>(900)) == Fixnum<23>(1350));
 }
 
 void test_subtract() {
-    Fixnum<31> one { 100 };
-    one -= Fixnum<31> { 1500 };
-    Fixnum<31> two { -1400 };
+    Fixnum<31> one(100);
+    one -= Fixnum<31>(1500);
+    Fixnum<31> two(-1400);
     assert(one == two);
 
-    assert((Fixnum<31> { 100'000'000 } - Fixnum<31> { 99'000'000 }) == Fixnum<31> { 1'000'000 });
+    assert((Fixnum<31>(100000000) - Fixnum<31>(99000000)) == Fixnum<31>(1000000));
+}
+
+void test_shifting() {
+    Fixnum<8> one(2);
+    one <<= 1;
+    assert(one.str() == "4");
+    one >>= 1;
+    assert(one.str() == "2");
+
+    Fixnum<32> two(0x606060);
+    two <<= 1;
+    assert(two.str(16) == "C0C0C0");
+    two <<= 1;
+    assert(two.str(16) == "1818180");
+    two >>= 1;
+    two >>= 1;
+    assert(two.str(16) == "606060");
+
+    Fixnum<17> three(0xC000);
+    assert((three << 1).str()[0] == '-');
+    assert((three << 3).str() == "0");
+    assert((three >> 3).str(16) == "1800");
+}
+
+void test_multiplication() {
+    Fixnum<16> source(4);
+    Fixnum<16> eight(8);
+    source *= eight;
+    assert(source.str() == "32");
+
+    Fixnum<18> source2(25);
+    Fixnum<18> multiplier2(25);
+    source2 *= multiplier2;
+    assert(source2.str() == "625");
+
+    Fixnum<18> multiplier3(-7);
+    source2 *= multiplier3;
+    assert(source2.str() == "-4375");
+
+    source2 *= Fixnum<18>(0);
+    assert(source2.str() == "0");
+
+    Fixnum<32> overflow(1000000);
+    overflow *= Fixnum<32>(1000000);
+    assert(overflow.str() == "-727379968");
+
+    assert((Fixnum<32>(1000000) * Fixnum<32>(1000000)).str() == "-727379968");
+}
+
+void test_increment_decrement() {
+    Fixnum<8> s1(15);
+    --s1;
+    assert(s1.str() == "14");
+    ++s1;
+    assert(s1.str() == "15");
+
+    assert((++Fixnum<16>(0)).str() == "1");
+    assert((Fixnum<16>(0)++).str() == "0");
+    assert((--Fixnum<16>(0)).str() == "-1");
+    assert((Fixnum<16>(0)--).str() == "0");
+    assert((--Fixnum<32>(0x40000000)).str(16) == "3FFFFFFF");
+
+    Fixnum<32> lowest(std::numeric_limits<int32_t>::lowest());
+    assert((--lowest).is_positive());
+
+    Fixnum<32> max(std::numeric_limits<int32_t>::max());
+    assert((++max).is_negative());
+}
+
+void test_bit_operator() {
+    Fixnum<8> one(8);
+    assert(one[4] == 1);
+    assert(one[5] == 0);
+
+    Fixnum<24> tf(0x100000);
+    assert(tf[21] == 1);
+    assert(tf[22] == 0);
 }
 
 void test_unary_pos_neg() {
-    Fixnum<9> one { 19 };
-    assert((-one) == Fixnum<9> { -19 });
+    Fixnum<9> one(19);
+    assert((-one) == Fixnum<9>(-19));
 
-    Fixnum<9> two { -21 };
-    assert(-two == Fixnum<9> { 21 });
+    Fixnum<9> two(-21);
+    assert(-two == Fixnum<9>(21));
 }
 
 void test_same_representation() {
-    Fixnum<31> one { 100 };
-    one -= Fixnum<31> { 1500 };
-    Fixnum<31> two { -1400 };
+    Fixnum<31> one(100);
+    one -= Fixnum<31>(1500);
+    Fixnum<31> two(-1400);
     assert(one.str() == two.str());
     
     for(int i = 0; i < Fixnum<31>::slots; ++i) {
         assert(one.data()[i] == two.data()[i]);
     }
+}
+
+void test_initializer_list() {
+    using namespace decode;
+    Fixnum<16> full { narrow_cast<uint8_t>(0xFF), narrow_cast<uint8_t>(0x7F) };
+    assert(full.str() == "32767");
+
+    Fixnum<16> min { narrow_cast<uint8_t>(0xFF), narrow_cast<uint8_t>(0xFF) };
+    assert(min.str() == "-1");
+
+    Fixnum<16> ten { narrow_cast<uint8_t>(10), narrow_cast<uint8_t>(0) };
+    assert(ten.str() == "10");
 }
 
 int main(int argc, char* argv[]) {
@@ -267,10 +360,20 @@ int main(int argc, char* argv[]) {
     test_cast();
     test_sign_extend();
     test_same_representation();
+    test_initializer_list();
     
     test_add();
     test_unary_pos_neg();
     test_subtract();
+    test_shifting();
+    test_multiplication();
+    test_increment_decrement();
+    test_bit_operator();
+    
+    // std::cout << "lowest: " << std::numeric_limits<int32_t>::lowest() << std::endl;
+    // std::cout << "division lowest: " << std::numeric_limits<int32_t>::lowest() / 2 << std::endl;
+    // std::cout << "max: " << std::numeric_limits<int32_t>::max() << std::endl;
+    // std::cout << "division max: " << std::numeric_limits<int32_t>::max() / 2 << std::endl;
     
     // int foo = 1234567;
     // short short_foo = foo;

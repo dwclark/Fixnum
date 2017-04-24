@@ -61,6 +61,18 @@ public:
         std::memcpy(_data, f._data, sizeof(_data));
     }
 
+    //TODO: Fix and test this, not working
+    Fixnum(const std::initializer_list<uint8_t> init) {
+        const uint8_t* ptr = init.begin();
+        for(int i = 0; i < init.size() && i < slots; ++i) {
+            _data[i] = ptr[i];
+        }
+
+        if(slots <= init.size()) {
+            _truncate();
+        }
+    }
+    
     Fixnum(const int16_t val) {
         _data[0] = val & 0xFF;
         if(slots >= 2) _data[1] = (val >> 8) & 0xFF;
@@ -87,6 +99,26 @@ public:
         }
 
         if(slots <= 4) {
+            _truncate();
+        }
+    }
+
+    Fixnum(const int64_t val) {
+        _data[0] = val & 0xFF;
+        if(slots >= 2) _data[1] = (val >> 8) & 0xFF;
+        if(slots >= 3) _data[2] = (val >> 16) & 0xFF;
+        if(slots >= 4) _data[3] = (val >> 24) & 0xFF;
+        if(slots >= 5) _data[4] = (val >> 32) & 0xFF;
+        if(slots >= 6) _data[5] = (val >> 40) & 0xFF;
+        if(slots >= 7) _data[6] = (val >> 48) & 0xFF;
+        if(slots >= 8) _data[7] = (val >> 56) & 0xFF;
+
+        //sign extend if needed
+        if(slots > 8) {
+            decode::sign_extend(_data, slots, 64);
+        }
+
+        if(slots <= 8) {
             _truncate();
         }
     }
@@ -122,23 +154,124 @@ public:
         return ret;
     }
 
+    Fixnum& operator++() {
+        _add_one(_data);
+        return *this;
+    }
+
+    Fixnum operator++(int) {
+        Fixnum ret { *this };
+        _add_one(_data);
+        return ret;
+    }
+
     Fixnum& operator-=(const Fixnum& rhs) {
         _add_to(_data, rhs.complement()._data);
         return *this;
     }
 
-    Fixnum operator-(const Fixnum& n) {
+    Fixnum operator-(const Fixnum& n) const {
         Fixnum ret { *this };
         ret -= n;
+        return ret;
+    }
+
+    Fixnum& operator--() {
+        _subtract_one(_data);
+        return *this;
+    }
+
+    Fixnum operator--(int) {
+        Fixnum ret { *this };
+        _subtract_one(_data);
         return ret;
     }
 
     Fixnum operator-() const {
         return complement();
     }
+
+    Fixnum& operator*=(const Fixnum& n) {
+        const bool end_with_complement = is_negative() ^ n.is_negative();
+        Fixnum multiplier { n };
+        Fixnum multiplicand(0);
+        
+        if(is_negative()) {
+            _complement();
+        }
+
+        if(multiplier.is_negative()) {
+            multiplier._complement();
+        }
+
+        for(int i = 0; i < N; ++i) {
+            if(_is_bit_set_zero_index(_data, i)) {
+                _add_to(multiplicand._data, multiplier._data);
+            }
+
+            multiplier <<= 1;
+        }
+
+        std::memcpy(_data, multiplicand._data, sizeof(_data));
+        if(end_with_complement) {
+            _complement();
+        }
+
+        return *this;
+    }
+
+    Fixnum operator*(const Fixnum& n) const {
+        Fixnum ret { *this };
+        ret *= n;
+        return ret;
+    }
+
+    Fixnum& operator<<=(const int by) {
+        switch(by) {
+        case 0: break;
+        case 1: _left_shift_1(_data); break;
+        default: _left_shift(_data, by);
+        }
+
+        return *this;
+    }
+
+    Fixnum operator<<(const int by) const {
+        Fixnum ret { *this };
+        ret <<= by;
+        return ret;
+    }
+
+    Fixnum& operator>>=(const int by) {
+        switch(by) {
+        case 0: break;
+        case 1: _right_shift_1(_data); break;
+        default: _right_shift(_data, by);
+        }
+
+        return *this;
+    }
+
+    Fixnum operator>>(const int by) const {
+        Fixnum ret { *this };
+        ret >>= by;
+        return ret;
+    }
+
+    int operator[](const int index) const {
+        if(index >= N) {
+            throw std::overflow_error("can't access bits beyond size of fixnum");
+        }
+        
+        return _is_bit_set_zero_index(_data, index - 1) ? 1 : 0;
+    }
     
     bool is_negative() const {
         return (_data[top_index] & sign_mask) != 0;
+    }
+
+    bool is_positive() const {
+        return (_data[top_index] & sign_mask) == 0;
     }
 
     bool is_lowest() const {
@@ -210,6 +343,13 @@ public:
 private:
     uint8_t _data[slots];
 
+    bool _is_bit_set_zero_index(const uint8_t* d, const int bit) const {
+        const int index = bit / 8;
+        const int bit_pos = bit % 8;
+        const int mask = 1 << bit_pos;
+        return (d[index] & mask) > 0;
+    }
+    
     void _add_to(uint8_t* target, const uint8_t* n) {
         uint16_t rem = 0;
         for(int i = 0; i < slots; ++i) {
@@ -217,8 +357,8 @@ private:
             target[i] = sum & 0xFF;
             rem = (sum & 0xF00) >> 8;
         }
-        
-        target[top_index] = target[top_index] & top_mask;
+
+        _truncate(target);
     }
 
     void _add_one(uint8_t* target) {
@@ -234,7 +374,29 @@ private:
             ++i;
         }
 
-        target[top_index] = target[top_index] & top_mask;
+        _truncate(target);
+    }
+
+    void _subtract_one(uint8_t* target) {
+        int nonzero_slot;
+        for(nonzero_slot = 0; nonzero_slot < slots; ++nonzero_slot) {
+            if(target[nonzero_slot] != 0) {
+                break;
+            }
+        }
+
+        if(nonzero_slot == slots) {
+            _fill_1(target);
+        }
+        else {
+            target[nonzero_slot] -= 1;
+            
+            for(int index = nonzero_slot - 1; index >= 0; --index) {
+                target[index] = 0xFF;
+            }
+
+            _truncate(target);
+        }
     }
 
     void _complement(uint8_t* d) {
@@ -256,8 +418,65 @@ private:
         }
     }
 
+    void _truncate(uint8_t* d) {
+        d[top_index] = d[top_index] & top_mask;
+    }
+
     void _truncate() {
         _data[top_index] = _data[top_index] & top_mask;
+    }
+
+    void _zero(uint8_t* d) {
+        std::memset(d, 0, slots);
+    }
+
+    void _fill_1(uint8_t* d) {
+        std::memset(d, 0xFF, slots);
+        _truncate(d);
+    }
+
+    bool _is_zero(const uint8_t* d) {
+        for(int i = 0; i < slots; ++i) {
+            if(d[i] != 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    void _left_shift(uint8_t* d, const int by) {
+        //TODO: Replace this with something more clever at some point
+        for(int i = 0; i < by; ++i) {
+            _left_shift_1(d);
+        }
+    }
+    
+    void _left_shift_1(uint8_t* d) {
+        for(int i = top_index; i > 0; --i) {
+            const int bottom = ((d[i-1] & 0x80) > 0) ? 1 : 0;
+            d[i] = (d[i] << 1) | bottom;
+        }
+
+        d[0] <<= 1;
+        _truncate();
+    }
+
+    void _right_shift(uint8_t* d, const int by) {
+        //TODO: Replace this with something more clever at some point
+        for(int i = 0; i < by; ++i) {
+            _right_shift_1(d);
+        }
+    }
+    
+    void _right_shift_1(uint8_t* d) {
+        for(int i = 0; i < top_index; ++i) {
+            const int top = ((d[i+1] & 0x1) > 0) ? 0x80 : 0;
+            d[i] = (d[i] >> 1) | top;
+        }
+
+        d[top_index] >>= 1;
+        _truncate();
     }
 };
 
@@ -273,14 +492,6 @@ Fixnum<T> fixnum_cast(const Fixnum<S>& source) {
         decode::sign_extend(ret._data, Fixnum<T>::slots, S);
     }
     
-    return ret;
-}
-
-
-template<size_t N>
-Fixnum<N> operator+(const Fixnum<N>& f, const Fixnum<N>& s) {
-    Fixnum<N> ret { f };
-    ret += s;
     return ret;
 }
 
