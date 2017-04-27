@@ -342,6 +342,25 @@ void test_initializer_list() {
     assert(ten.str() == "10");
 }
 
+void test_cmp() {
+    Fixnum<16> one(0x8123);
+    Fixnum<16> one1(0x8123);
+    Fixnum<16> two(0x8124);
+    Fixnum<16> three(0x8122);
+    Fixnum<16> four(0x123);
+
+    assert(one < two);
+    assert(one <= two);
+    
+    assert(one == one1);
+    assert(one <= one1);
+    assert(one >= one1);
+    
+    assert(one > three);
+    assert(one > four);
+    assert(four > one);
+}
+
 int main(int argc, char* argv[]) {
 
     using namespace decode;
@@ -369,6 +388,7 @@ int main(int argc, char* argv[]) {
     test_multiplication();
     test_increment_decrement();
     test_bit_operator();
+    test_cmp();
     
     // std::cout << "lowest: " << std::numeric_limits<int32_t>::lowest() << std::endl;
     // std::cout << "division lowest: " << std::numeric_limits<int32_t>::lowest() / 2 << std::endl;

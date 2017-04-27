@@ -135,12 +135,28 @@ public:
         return *this;
     }
 
-    bool operator==(const Fixnum& rhs) {
+    bool operator==(const Fixnum& rhs) const {
         return memcmp(_data, rhs._data, slots) == 0;
     }
 
-    bool operator!=(const Fixnum& rhs) {
+    bool operator!=(const Fixnum& rhs) const {
         return !(*this == rhs);
+    }
+
+    bool operator<(const Fixnum& rhs) const {
+        return _cmp(_data, rhs._data) == -1;
+    }
+
+    bool operator<=(const Fixnum& rhs) const {
+        return _cmp(_data, rhs._data) < 1;
+    }
+
+    bool operator>(const Fixnum& rhs) const {
+        return _cmp(_data, rhs._data) == 1;
+    }
+
+    bool operator>=(const Fixnum& rhs) const {
+        return _cmp(_data, rhs._data) > -1;
     }
 
     Fixnum& operator+=(const Fixnum& rhs) {
@@ -477,6 +493,30 @@ private:
 
         d[top_index] >>= 1;
         _truncate();
+    }
+
+    int _cmp(const uint8_t* first, const uint8_t* second) const {
+        const bool fNeg = (first[top_index] & sign_mask) != 0;
+        const bool sNeg = (second[top_index] & sign_mask) != 0;
+
+        if(fNeg && !sNeg) {
+            return -1;
+        }
+        else if(!fNeg && sNeg) {
+            return 1;
+        }
+
+        //equal signs, now just compare the blocks
+        for(int i = top_index; i >= 0; --i) {
+            if(first[i] < second[i]) {
+                return -1;
+            }
+            else if(first[i] > second[i]) {
+                return 1;
+            }
+        }
+
+        return 0;
     }
 };
 
