@@ -68,7 +68,6 @@ void test_convert_to_digits() {
     uint8_t data[8];
     convert_to_digits("12345678", data, 8);
     for(int i = 0; i < 8; ++i) {
-        //std::cout << "index: " << i << " data: " << (int) data[i] << std::endl;
         assert(data[i] == (i+1));
     }
 }
@@ -357,8 +356,94 @@ void test_cmp() {
     assert(one >= one1);
     
     assert(one > three);
-    assert(one > four);
+    assert(one < four);
     assert(four > one);
+}
+
+void test_ands_ors() {
+    Fixnum<13> one(0xFFF);
+    Fixnum<13> toAnd(0x40);
+
+    one &= toAnd;
+    assert(one.str(16) == "40");
+    assert((Fixnum<13>(0xFFF) & Fixnum<13>(0x40)).str(16) == "40");
+
+    Fixnum<13> two(0xF);
+    Fixnum<13> toOr(0xF0);
+    two |= toOr;
+    assert(two.str(16) == "FF");
+    assert((Fixnum<13>(0xF) | Fixnum<13>(0xF0)).str(16) == "FF");
+
+    Fixnum<13> three(0xAA);
+    Fixnum<13> toXor(0x55);
+    three ^= toXor;
+    assert(three.str(16) == "FF");
+    assert((Fixnum<13>(0xAA) ^ Fixnum<13>(0x55)).str(16) == "FF");
+}
+
+void test_division() {
+    try {
+        Fixnum<25> one(100);
+        one /= Fixnum<25>(0);
+        assert(false);
+    }
+    catch(std::invalid_argument& a) {
+        assert(true);
+    }
+
+    Fixnum<25> first_dividend(4);
+    Fixnum<25> first_divisor(2);
+    first_dividend /= first_divisor;
+    assert(first_dividend.str() == "2");
+
+    Fixnum<9> second_dividend(33);
+    Fixnum<9> second_divisor(8);
+    second_dividend /= second_divisor;
+    assert(second_dividend.str(10) == "4");
+
+    Fixnum<16> third_dividend(1024);
+    Fixnum<16> third_divisor(64);
+    third_dividend /= third_divisor;
+    assert(third_dividend.str() == "16");
+
+    Fixnum<16> fourth_dividend(8192);
+    Fixnum<16> fourth_divisor(121);
+    fourth_dividend /= fourth_divisor;
+    assert(fourth_dividend.str() == "67");
+
+    Fixnum<32> fifth_dividend(123456789);
+    Fixnum<32> fifth_divisor(925);
+    fifth_dividend /= fifth_divisor;
+    assert(fifth_dividend.str() == "133466");
+
+    Fixnum<32> sixth_dividend(123456789);
+    Fixnum<32> sixth_divisor(-925);
+    sixth_dividend /= sixth_divisor;
+    assert(sixth_dividend.str() == "-133466");
+
+    assert((Fixnum<32>(123456789) / Fixnum<32>(925)).str() == "133466");
+
+    std::array<Fixnum<32>, 2> res = Fixnum<32>(123456789).div_and_mod(Fixnum<32>(925));
+    assert(res[0].str() == "133466");
+    assert(res[1].str() == "739");
+
+    res = Fixnum<32>(16).div_and_mod(Fixnum<32>(4));
+    assert(res[0].str() == "4");
+    assert(res[1].str() == "0");
+
+    Fixnum<32> seventh_dividend(123456789);
+    Fixnum<32> seventh_divisor(925);
+    seventh_dividend %= seventh_divisor;
+    assert(seventh_dividend.str() == "739");
+
+    assert((Fixnum<32>(123456789) % Fixnum<32>(925)).str() == "739");
+}
+
+void test_bit_set() {
+    assert(Fixnum<8>(1).fsb() == 1);
+    assert(Fixnum<8>(8).fsb() == 4);
+    assert(Fixnum<32>(0x1000).fsb() == 13);
+    assert(Fixnum<32>(0x2000).fsb() == 14);
 }
 
 int main(int argc, char* argv[]) {
@@ -389,7 +474,10 @@ int main(int argc, char* argv[]) {
     test_increment_decrement();
     test_bit_operator();
     test_cmp();
+    test_bit_set();
+    test_division();
     
+    test_ands_ors();
     // std::cout << "lowest: " << std::numeric_limits<int32_t>::lowest() << std::endl;
     // std::cout << "division lowest: " << std::numeric_limits<int32_t>::lowest() / 2 << std::endl;
     // std::cout << "max: " << std::numeric_limits<int32_t>::max() << std::endl;

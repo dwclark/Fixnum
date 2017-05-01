@@ -14,6 +14,7 @@
 #include <vector>
 #include <limits>
 #include <cstring>
+#include <array>
 
 template<size_t N> class Fixnum;
 
@@ -242,6 +243,35 @@ public:
         return ret;
     }
 
+    Fixnum& operator/=(const Fixnum& n) {
+        _check_divide_by_zero(n);
+        Fixnum dividend { *this };
+        Fixnum divisor { n };
+        _div_and_mod(*this, dividend, divisor);
+        return *this;
+    }
+
+    Fixnum operator/(const Fixnum& n) {
+        Fixnum ret { *this };
+        ret /= n;
+        return ret;
+    }
+
+    Fixnum& operator%=(const Fixnum& n) {
+        _check_divide_by_zero(n);
+        Fixnum dividend { *this };
+        Fixnum divisor { n };
+        _div_and_mod(*this, dividend, divisor);
+        std::memcpy(_data, dividend._data, slots);
+        return *this;
+    }
+
+    Fixnum operator%(const Fixnum& n) {
+        Fixnum ret = { *this };
+        ret %= n;
+        return ret;
+    }
+
     Fixnum& operator<<=(const int by) {
         switch(by) {
         case 0: break;
@@ -274,12 +304,76 @@ public:
         return ret;
     }
 
+    Fixnum& operator&=(const Fixnum& n) {
+        for(int i = 0; i < slots; ++i) {
+            _data[i] &= n._data[i];
+        }
+
+        _truncate(_data);
+        return *this;
+    }
+
+    Fixnum operator&(const Fixnum& n) const {
+        Fixnum ret { *this };
+        ret &= n;
+        return ret;
+    }
+
+    Fixnum& operator|=(const Fixnum& n) {
+        for(int i = 0; i < slots; ++i) {
+            _data[i] |= n._data[i];
+        }
+
+        _truncate(_data);
+        return *this;
+    }
+
+    Fixnum operator|(const Fixnum& n) const {
+        Fixnum ret { *this };
+        ret |= n;
+        return ret;
+    }
+
+    Fixnum& operator^=(const Fixnum& n) {
+        for(int i = 0; i < slots; ++i) {
+            _data[i] ^= n._data[i];
+        }
+
+        _truncate(_data);
+        return (*this);
+    }
+
+    Fixnum operator^(const Fixnum& n) const {
+        Fixnum ret { *this };
+        ret ^= n;
+        return ret;
+    }
+
     int operator[](const int index) const {
         if(index >= N) {
             throw std::overflow_error("can't access bits beyond size of fixnum");
         }
         
         return _is_bit_set_zero_index(_data, index - 1) ? 1 : 0;
+    }
+
+    int fsb() const {
+        const int slot = _first_non_zero_slot(_data);
+        if(slot == -1) {
+            return 0;
+        }
+        else {
+            return (slot * 8) + _first_set_bit(_data[slot]) + 1;
+        }
+    }
+
+    std::array<Fixnum,2> div_and_mod(const Fixnum& n) const {
+        _check_divide_by_zero(n);
+        Fixnum result { 0 };
+        Fixnum dividend { *this };
+        Fixnum divisor { n };
+        _div_and_mod(result, dividend, divisor);
+        return std::array<Fixnum,2> { result, dividend };
     }
     
     bool is_negative() const {
@@ -434,7 +528,7 @@ private:
         }
     }
 
-    void _truncate(uint8_t* d) {
+    static void _truncate(uint8_t* d) {
         d[top_index] = d[top_index] & top_mask;
     }
 
@@ -442,16 +536,16 @@ private:
         _data[top_index] = _data[top_index] & top_mask;
     }
 
-    void _zero(uint8_t* d) {
+    static void _zero(uint8_t* d) {
         std::memset(d, 0, slots);
     }
 
-    void _fill_1(uint8_t* d) {
+    static void _fill_1(uint8_t* d) {
         std::memset(d, 0xFF, slots);
         _truncate(d);
     }
 
-    bool _is_zero(const uint8_t* d) {
+    static bool _is_zero(const uint8_t* d) {
         for(int i = 0; i < slots; ++i) {
             if(d[i] != 0) {
                 return false;
@@ -461,41 +555,41 @@ private:
         return true;
     }
 
-    void _left_shift(uint8_t* d, const int by) {
+    static void _left_shift(uint8_t* d, const int by) {
         //TODO: Replace this with something more clever at some point
         for(int i = 0; i < by; ++i) {
             _left_shift_1(d);
         }
     }
     
-    void _left_shift_1(uint8_t* d) {
+    static void _left_shift_1(uint8_t* d) {
         for(int i = top_index; i > 0; --i) {
             const int bottom = ((d[i-1] & 0x80) > 0) ? 1 : 0;
             d[i] = (d[i] << 1) | bottom;
         }
 
         d[0] <<= 1;
-        _truncate();
+        _truncate(d);
     }
 
-    void _right_shift(uint8_t* d, const int by) {
+    static void _right_shift(uint8_t* d, const int by) {
         //TODO: Replace this with something more clever at some point
         for(int i = 0; i < by; ++i) {
             _right_shift_1(d);
         }
     }
     
-    void _right_shift_1(uint8_t* d) {
+    static void _right_shift_1(uint8_t* d) {
         for(int i = 0; i < top_index; ++i) {
             const int top = ((d[i+1] & 0x1) > 0) ? 0x80 : 0;
             d[i] = (d[i] >> 1) | top;
         }
 
         d[top_index] >>= 1;
-        _truncate();
+        _truncate(d);
     }
 
-    int _cmp(const uint8_t* first, const uint8_t* second) const {
+    static int _cmp(const uint8_t* first, const uint8_t* second) {
         const bool fNeg = (first[top_index] & sign_mask) != 0;
         const bool sNeg = (second[top_index] & sign_mask) != 0;
 
@@ -517,6 +611,98 @@ private:
         }
 
         return 0;
+    }
+
+    static int _first_set_bit(const uint8_t d) {
+        if((0x80 & d) > 0) {
+            return 7;
+        }
+        else if((0x40 & d) > 0) {
+            return 6;
+        }
+        else if((0x20 & d) > 0) {
+            return 5;
+        }
+        else if((0x10 & d) > 0) {
+            return 4;
+        }
+        else if((0x8 & d) > 0) {
+            return 3;
+        }
+        else if((0x4 & d) > 0) {
+            return 2;
+        }
+        else if((0x2 & d) > 0) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    static int _first_non_zero_slot(const uint8_t* d) {
+        int i;
+        
+        for(i = top_index; i > -1; --i) {
+            if(d[i] > 0) {
+                return i;
+            }
+        }
+
+        return i;
+    }
+
+    static void _check_divide_by_zero(const Fixnum& n) {
+        if(_is_zero(n._data)) {
+            throw std::invalid_argument("divide by zero");
+        }
+    }
+    
+    static void _div_and_mod(Fixnum& result, Fixnum& dividend, Fixnum& divisor) {
+        const bool end_with_complement = dividend.is_negative() ^ divisor.is_negative();
+        if(divisor.is_negative()) {
+            divisor._complement();
+        }
+
+        if(dividend.is_negative()) {
+            dividend._complement();
+        }
+        
+        _zero(result._data);
+
+        const int fsb_divisor = divisor.fsb();
+        const int fsb_dividend = dividend.fsb();
+        
+        const int shift_it = fsb_dividend - fsb_divisor;
+        if(shift_it < 0) {
+            return;
+        }
+
+        int current_slot = shift_it / 8;
+        int current_bit = shift_it % 8;
+        _left_shift(divisor._data, shift_it);
+        
+        while(current_slot > -1) {
+            if(divisor <= dividend) {
+                result._data[current_slot] |= (1 << current_bit);
+                dividend -= divisor;
+            }
+
+            divisor >>= 1;
+
+            if(current_bit > 0) {
+                --current_bit;
+            }
+            else {
+                --current_slot;
+                current_bit = 7;
+            }
+        }
+
+        if(end_with_complement) {
+            result._complement();
+            dividend._complement();
+        }
     }
 };
 
