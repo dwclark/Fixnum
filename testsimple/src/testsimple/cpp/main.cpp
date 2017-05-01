@@ -34,6 +34,12 @@ void test_convert_base() {
     assert(c3.size() == 9);
     assert(c3[0] == 1 && c3[1] == 1 && c3[2] == 1 && c3[3] == 1 && c3[4] == 1 &&
            c3[5] == 0 && c3[6] == 1 && c3[7] == 0 && c3[8] == 1);
+
+    std::vector<uint8_t> c4 = convert_base(std::string("765"), 8, 2);
+    assert(c4.size() == 9);
+    assert(c4[0] == 1 && c4[1] == 1 && c4[2] == 1 && c4[3] == 1 && c4[4] == 1 &&
+           c4[5] == 0 && c4[6] == 1 && c4[7] == 0 && c4[8] == 1);
+
 }
 
 void test_slots() {
@@ -339,6 +345,10 @@ void test_initializer_list() {
 
     Fixnum<16> ten { narrow_cast<uint8_t>(10), narrow_cast<uint8_t>(0) };
     assert(ten.str() == "10");
+
+    Fixnum<32> bigger = { narrow_cast<uint8_t>(0x52), narrow_cast<uint8_t>(0x52),
+                          narrow_cast<uint8_t>(0x52), narrow_cast<uint8_t>(0x52) };
+    assert(bigger.str(16) == "52525252");
 }
 
 void test_cmp() {
@@ -446,6 +456,29 @@ void test_bit_set() {
     assert(Fixnum<32>(0x2000).fsb() == 14);
 }
 
+void test_string_constructors() {
+    Fixnum<8> one("F", 16);
+    assert(one.str(16) == "F");
+
+    Fixnum<8> two("-F", 16);
+    assert(two.str(16) == "-F");
+
+    Fixnum<64> three("7FFFFFFFFFFFFFFF", 16);
+    assert(three.str(16) == "7FFFFFFFFFFFFFFF");
+
+    Fixnum<128> four("7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16);
+    assert(four.str(16) == "7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+    assert((four + Fixnum<128>(1)).str(16) == "-80000000000000000000000000000000");
+
+    Fixnum<162> big("1234567890123456789012345678901234567890", 10);
+    assert(big.str() == "1234567890123456789012345678901234567890");
+    assert((big + big).str() == "2469135780246913578024691357802469135780");
+
+    Fixnum<162> bigNeg("-1234567890123456789012345678901234567890", 10);
+    assert(bigNeg.str() == "-1234567890123456789012345678901234567890");
+    assert((bigNeg + bigNeg).str() == "-2469135780246913578024691357802469135780");
+}
+
 int main(int argc, char* argv[]) {
 
     using namespace decode;
@@ -478,26 +511,5 @@ int main(int argc, char* argv[]) {
     test_division();
     
     test_ands_ors();
-    // std::cout << "lowest: " << std::numeric_limits<int32_t>::lowest() << std::endl;
-    // std::cout << "division lowest: " << std::numeric_limits<int32_t>::lowest() / 2 << std::endl;
-    // std::cout << "max: " << std::numeric_limits<int32_t>::max() << std::endl;
-    // std::cout << "division max: " << std::numeric_limits<int32_t>::max() / 2 << std::endl;
-    
-    // int foo = 1234567;
-    // short short_foo = foo;
-    // cout << "Size of int: " << sizeof(int) << " Size of short: " << sizeof(short) << std::endl;
-    // cout << short_foo << std::endl;
-    // cout << "Top bits: " << (int) ((short_foo >> 8) & 0xFF)
-    //      << " bottom bits: " << (int) (short_foo & 0xFF) << std::endl;
-
-    // int foo2 = -1;
-    // long long_foo2 = foo2;
-
-    // cout << "Int masked: " << (int) (foo2 & 0x7FFFFFFF)
-    //      << " Long masked: " << (int) (long_foo2 & 0x7FFFFFFF) << endl;
-
-    // const int lowest = numeric_limits<int>::lowest();
-    // cout << "Lowest int: " << lowest;
-    // cout << " negated " << (-lowest) << endl;
-    // return 0;
+    test_string_constructors();
 }

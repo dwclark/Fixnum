@@ -8,9 +8,8 @@ namespace decode {
         std::for_each(vec.begin(), vec.end(), [](auto n) { std::cout << (int) n << " "; });
         std::cout << std::endl;
     }
-    
-    std::vector<uint8_t> convert_base(const char* input, const int source, const int target) {
-        std::vector<uint8_t> working = to_division_vector<uint8_t>(input, source);
+
+    std::vector<uint8_t> convert_base(std::vector<uint8_t> working, const int source, const int target) {
         std::vector<uint8_t> remainder;
         int sindex = 0;
         const int looping = working.size() - 1;
@@ -41,6 +40,14 @@ namespace decode {
         return remainder;
     }
 
+    std::vector<uint8_t> convert_base(const std::string& input, const int source, const int target) {
+        return convert_base(to_division_vector<uint8_t>(input, source), source, target);
+    }
+    
+    std::vector<uint8_t> convert_base(const char* input, const int source, const int target) {
+        return convert_base(to_division_vector<uint8_t>(input, source), source, target);
+    }
+
     void sign_extend(uint8_t* data, const int size, const int bit) {
         const int bit_pos = bit - 1;
         const int slot = bit_pos / 8;
@@ -54,13 +61,9 @@ namespace decode {
         const int beyond_current = extension ? 0xFF : 0;
 
         if(extension) {
-            // std::cout << "pos: " << pos << std::endl;
-            // std::cout << "extension shift: " << (int) ((0xFF) & (0xFF << (pos+1))) << std::endl;
             data[slot] |= (0xFF << (pos+1));
         }
         else {
-            // std::cout << "pos: " << pos << std::endl;
-            // std::cout << "extension mask: " << (int) (0xFF & (0xFF >> (8-(pos+1)))) << std::endl;
             data[slot] &= (0xFF >> (8-(pos+1)));
         }
         

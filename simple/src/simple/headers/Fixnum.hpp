@@ -62,8 +62,7 @@ public:
         std::memcpy(_data, f._data, sizeof(_data));
     }
 
-    //TODO: Fix and test this, not working
-    Fixnum(const std::initializer_list<uint8_t> init) {
+    Fixnum(const std::initializer_list<uint8_t> init) : _data { 0 } {
         const uint8_t* ptr = init.begin();
         for(int i = 0; i < init.size() && i < slots; ++i) {
             _data[i] = ptr[i];
@@ -73,8 +72,32 @@ public:
             _truncate();
         }
     }
+
+    Fixnum(const char* input, const int base) : Fixnum(decode::ConvertBase<uint8_t>(input, base, 16)) { }
+
+    Fixnum(const std::string input, const int base) : Fixnum(decode::ConvertBase<uint8_t>(input, base, 16)) { }
     
-    Fixnum(const int16_t val) {
+    Fixnum(const decode::ConvertBase<uint8_t>& cb) : Fixnum() {
+        if(cb.is_zero()) {
+            return;
+        }
+
+        const bool overflows = (slots * 2) < cb.converted.size();
+        
+        int source_index = cb.converted.size() - 1;
+        for(int i = 0; i < slots; ++i) {
+            if(source_index < 0) break;
+            _data[i] = cb.converted[source_index--];
+             if(source_index < 0) break;
+            _data[i] |= (cb.converted[source_index--] << 4);
+         }
+
+        if(!overflows && !is_negative() && cb.is_negative()) {
+            _complement();
+        }
+    }
+    
+    Fixnum(const int16_t val) : Fixnum() {
         _data[0] = val & 0xFF;
         if(slots >= 2) _data[1] = (val >> 8) & 0xFF;
         
@@ -88,7 +111,7 @@ public:
         }
     }
     
-    Fixnum(const int32_t val) {
+    Fixnum(const int32_t val) : Fixnum() {
         _data[0] = val & 0xFF;
         if(slots >= 2) _data[1] = (val >> 8) & 0xFF;
         if(slots >= 3) _data[2] = (val >> 16) & 0xFF;
@@ -104,7 +127,7 @@ public:
         }
     }
 
-    Fixnum(const int64_t val) {
+    Fixnum(const int64_t val) : Fixnum(0) {
         _data[0] = val & 0xFF;
         if(slots >= 2) _data[1] = (val >> 8) & 0xFF;
         if(slots >= 3) _data[2] = (val >> 16) & 0xFF;

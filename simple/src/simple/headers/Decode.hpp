@@ -9,6 +9,11 @@
 #include <iostream>
 
 namespace decode {
+
+    std::vector<uint8_t> convert_base(std::vector<uint8_t> working, const int source, const int target);
+    std::vector<uint8_t> convert_base(const char* input, const int base, const int target);
+    std::vector<uint8_t> convert_base(const std::string& input, const int base, const int target);
+
     template<typename R, typename A>
     R narrow_cast(const A& a) {
         R r = R(a);
@@ -18,6 +23,68 @@ namespace decode {
         
         return r;
     }
+
+    template<typename T>
+    class ConvertBase {
+    public:
+        ConvertBase(const std::string& input, const int base, const int target) {
+            if(input.length() == 0) {
+                return;
+            }
+            
+            char tmp_str[2] = { 0, 0 };
+            
+            int i = 0;
+            if(input[i] == '+' || input[i] == '-') {
+                sign = input[i];
+                ++i;
+            }
+            
+            for(; i < input.length(); ++i) {
+                tmp_str[0] = input[i];
+                working.push_back(narrow_cast<T>(strtol(tmp_str, nullptr, base)));
+            }
+
+            converted = convert_base(working, base, target);
+        }
+
+        ConvertBase(const char* input, const int base, const int target) {
+            char tmp_str[2] = { 0, 0 };
+            const int length = strlen(input);
+            if(length == 0) {
+                return;
+            }
+
+            int i = 0;
+            if(input[i] == '+' || input[i] == '-') {
+                sign = input[i];
+                ++i;
+            }
+            
+            for(; i < length; ++i) {
+                tmp_str[0] = input[i];
+                working.push_back(narrow_cast<T>(strtol(tmp_str, nullptr, base)));
+            }
+
+            converted = convert_base(working, base, target);
+        }
+        
+        bool is_positive() const { return sign == '+'; }
+        bool is_negative() const { return sign == '-'; }
+        bool is_zero() const { return working.size() == 0; }
+
+        void print_converted() const {
+            for(auto p : converted) {
+                std::cout << (int) p << " ";
+            }
+
+            std::cout << std::endl;
+        }
+        
+        std::vector<T> converted;
+        std::vector<T> working;
+        char sign;
+    };
     
     template<typename T>
     std::vector<T> to_division_vector(const char* input, const int base) {
@@ -31,9 +98,19 @@ namespace decode {
         
         return working;
     }
-    
-    std::vector<uint8_t> convert_base(const char* input, const int base, const int target);
 
+    template<typename T>
+    std::vector<T> to_division_vector(const std::string& input, const int base) {
+        std::vector<T> working;
+        char tmp_str[2] = { 0, 0 };
+        for(int i = 0; i < input.length(); ++i) {
+            tmp_str[0] = input[i];
+            working.push_back(narrow_cast<T>(strtol(tmp_str, nullptr, base)));
+        }
+        
+        return working;
+    }
+        
     constexpr char to_char(const uint8_t val) {
         switch(val) {
         case 0: return '0';
