@@ -445,6 +445,8 @@ public:
                 return false;
             }
         }
+
+        return true;
     }
     
     std::string str() const {

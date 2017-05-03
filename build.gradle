@@ -12,8 +12,12 @@ project(":simple") {
 
         binaries {
             all {
-                if (toolChain in Gcc && buildType == buildTypes.debug) {
+                if(toolChain in Gcc && buildType == buildTypes.debug) {
                     cppCompiler.args "-g"
+                }
+
+                if(toolChain in Clang) {
+                    cppCompiler.args "-stdlib=libc++", "-std=c++14"
                 }
             }
         }
@@ -36,8 +40,12 @@ project(':testsimple') {
         
         binaries {
             all {
-                if (toolChain in Gcc && buildType == buildTypes.debug) {
+                if(toolChain in Gcc && buildType == buildTypes.debug) {
                     cppCompiler.args "-g"
+                }
+
+                if(toolChain in Clang) {
+                    cppCompiler.args "-stdlib=libc++", "-std=c++14"
                 }
             }
         }

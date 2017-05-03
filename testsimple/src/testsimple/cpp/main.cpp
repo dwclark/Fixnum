@@ -99,7 +99,7 @@ void test_main_constructor() {
 void test_int_basics() {
     using namespace decode;
     
-    Fixnum<32> from_short(narrow_cast<int16_t>(400));
+    Fixnum<32> from_short(static_cast<int16_t>(400));
     assert(from_short == Fixnum<32>(400));
     
     Fixnum<32> one(200);
@@ -115,7 +115,7 @@ void test_int_basics() {
     assert(one == eq_one);
     assert(eq_one.str() == "200");
 
-    Fixnum<64> from_long(700000L);
+    Fixnum<64> from_long(static_cast<int64_t>(700000L));
     assert(from_long.str() == "700000");
 }
 
