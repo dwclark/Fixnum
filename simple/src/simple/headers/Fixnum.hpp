@@ -16,11 +16,6 @@
 #include <cstring>
 #include <array>
 
-template<size_t N> class Fixnum;
-
-template<size_t T, size_t S>
-Fixnum<T> fixnum_cast(const Fixnum<S>& source);
-
 template<size_t N>
 class Fixnum {
 public:
@@ -32,9 +27,6 @@ public:
     static constexpr int sign_mask = 0x80 >> ((slots * 8) - N);
     static constexpr int unsigned_mask = 0xFF >> (1 + (slots * 8) - N);
 
-    template<size_t T, size_t S>
-    friend Fixnum<T> fixnum_cast(const Fixnum<S>& source);
-    
     static constexpr Fixnum lowest() {
         Fixnum fn;
         fn._data[top_index] = sign_mask;
@@ -730,13 +722,6 @@ public:
     static constexpr size_t bits = N;
     static constexpr int slots = 1;
     static constexpr int hex_slots = slots * 2;
-    /*static constexpr int top_index = slots - 1;
-    static constexpr int top_mask = 0xFF >> ((slots * 8) - N);
-    static constexpr int sign_mask = 0x80 >> ((slots * 8) - N);
-    static constexpr int unsigned_mask = 0xFF >> (1 + (slots * 8) - N);*/
-    
-    template<size_t T, size_t S>
-    friend Fixnum<T> fixnum_cast(const Fixnum<S>& source);
     
     static constexpr Fixnum lowest() {
         return Fixnum(std::numeric_limits<int8_t>::lowest());
@@ -1068,10 +1053,6 @@ public:
     static constexpr size_t bits = N;
     static constexpr int slots = 2;
     static constexpr int hex_slots = slots * 2;
-    /*static constexpr int top_index = slots - 1;
-    static constexpr int top_mask = 0xFF >> ((slots * 8) - N);
-    static constexpr int sign_mask = 0x80 >> ((slots * 8) - N);
-    static constexpr int unsigned_mask = 0xFF >> (1 + (slots * 8) - N);*/
     
     template<size_t T, size_t S>
     friend Fixnum<T> fixnum_cast(const Fixnum<S>& source);
