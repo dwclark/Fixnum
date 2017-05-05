@@ -477,6 +477,12 @@ void test_division() {
 }
 
 void test_bit_set() {
+    using bit8 = Fixnum<8>;
+    using bit16 = Fixnum<16>;
+    
+    assert(bit8(0xF).set_bit(6).unset_bit(3).str(16) == "47");
+    assert(bit16(0xFFF).set_bit(13).unset_bit(9).str(16) == "2DFF");
+    
     assert(Fixnum<8>(1).fsb() == 0);
     assert(Fixnum<8>(8).fsb() == 3);
 
