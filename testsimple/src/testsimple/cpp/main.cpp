@@ -55,9 +55,6 @@ void test_convert_to_digits() {
 void test_slots() {
     assert(Fixnum<8>::slots == 1);
     assert(Fixnum<8>::hex_slots == 2);
-    assert(Fixnum<8>::top_index == 0);
-    assert(Fixnum<8>::top_mask == 0xFF);
-    assert(Fixnum<8>::sign_mask == 0x80);
     
     assert(Fixnum<15>::slots == 2);
     assert(Fixnum<15>::hex_slots == 4);
@@ -67,9 +64,6 @@ void test_slots() {
 
     assert(Fixnum<16>::slots == 2);
     assert(Fixnum<16>::hex_slots == 4);
-    assert(Fixnum<16>::top_index == 1);
-    assert(Fixnum<8>::top_mask == 0xFF);
-    assert(Fixnum<8>::sign_mask == 0x80);
 
     assert(Fixnum<17>::slots == 3);
     assert(Fixnum<17>::hex_slots == 6);
@@ -361,6 +355,7 @@ void test_initializer_list() {
 
 void test_cmp() {
     using bit8 = Fixnum<8>;
+    using bit24 = Fixnum<24>;
         
     Fixnum<16> one(0x8123);
     Fixnum<16> one1(0x8123);
@@ -382,10 +377,15 @@ void test_cmp() {
     assert(bit8(1) == bit8(1));
     assert(bit8(1) > bit8(0));
     assert(bit8(1) < bit8(2));
+
+    assert(bit24(0x7FFFFF) > bit24(1900));
+    assert(bit24(0xFFFFFF) < bit24(0));
+    assert(bit24(1239) == bit24(1239));
 }
 
 void test_ands_ors() {
     using bit8 = Fixnum<8>;
+    using bit16 = Fixnum<16>;
     
     Fixnum<13> one(0xFFF);
     Fixnum<13> toAnd(0x40);
@@ -408,10 +408,14 @@ void test_ands_ors() {
 
     assert((bit8(0xF) | bit8(0x70)) == bit8(127));
     assert((bit8(0xF) & bit8(0x70)) == bit8(0));
+
+    assert((bit16(0xFF) | bit16(0x7F00)) == bit16(0x7FFF));
+    assert((bit16(0xFF) & bit16(0x7F00)) == bit16(0));
 }
 
 void test_division() {
     using bit8 = Fixnum<8>;
+    using bit16 = Fixnum<16>;
     
     try {
         Fixnum<25> one(100);
@@ -469,11 +473,19 @@ void test_division() {
 
     assert((Fixnum<32>(123456789) % Fixnum<32>(925)).str() == "739");
     assert(bit8(100) / bit8(10) == bit8(10));
+    assert(bit16(10000) / bit16(100) == bit16(100));
 }
 
 void test_bit_set() {
     assert(Fixnum<8>(1).fsb() == 0);
     assert(Fixnum<8>(8).fsb() == 3);
+
+    assert(Fixnum<16>(0x1000).fsb() == 12);
+    assert(Fixnum<16>(0x2000).fsb() == 13);
+
+    assert(Fixnum<30>(0x1000).fsb() == 12);
+    assert(Fixnum<30>(0x2000).fsb() == 13);
+    
     assert(Fixnum<32>(0x1000).fsb() == 12);
     assert(Fixnum<32>(0x2000).fsb() == 13);
 }
@@ -485,6 +497,12 @@ void test_string_constructors() {
     Fixnum<8> two("-F", 16);
     assert(two.str(16) == "-F");
 
+    Fixnum<16> one16("7FFF", 16);
+    assert(one16.str(16) == "7FFF");
+
+    Fixnum<16> two16("8000", 16);
+    assert(two16.str(16) == "-8000");
+    
     Fixnum<64> three("7FFFFFFFFFFFFFFF", 16);
     assert(three.str(16) == "7FFFFFFFFFFFFFFF");
 
