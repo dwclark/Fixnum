@@ -216,6 +216,7 @@ namespace decode {
     }
 
     void sign_extend(uint8_t* data, const int size, const int bit);
+    int first_set_bit(const uint8_t d);
 }
 
 #endif

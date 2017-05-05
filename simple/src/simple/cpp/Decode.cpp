@@ -71,4 +71,35 @@ namespace decode {
             data[i] = beyond_current;
         }
     }
+
+    int first_set_bit(const uint8_t d) {
+        if((0x80 & d) > 0) {
+            return 7;
+        }
+        else if((0x40 & d) > 0) {
+            return 6;
+        }
+        else if((0x20 & d) > 0) {
+            return 5;
+        }
+        else if((0x10 & d) > 0) {
+            return 4;
+        }
+        else if((0x8 & d) > 0) {
+            return 3;
+        }
+        else if((0x4 & d) > 0) {
+            return 2;
+        }
+        else if((0x2 & d) > 0) {
+            return 1;
+        }
+        else if((0x1 & d) > 0) {
+            return 0;
+        }
+        else {
+            return -1;
+        }
+    }
+
 }

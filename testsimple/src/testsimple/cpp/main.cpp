@@ -42,6 +42,16 @@ void test_convert_base() {
 
 }
 
+void test_convert_to_digits() {
+    using namespace decode;
+    
+    uint8_t data[8];
+    convert_to_digits("12345678", data, 8);
+    for(int i = 0; i < 8; ++i) {
+        assert(data[i] == (i+1));
+    }
+}
+
 void test_slots() {
     assert(Fixnum<8>::slots == 1);
     assert(Fixnum<8>::hex_slots == 2);
@@ -68,36 +78,13 @@ void test_slots() {
     assert(Fixnum<17>::sign_mask == 0x01);
 }
 
-void test_convert_to_digits() {
-    using namespace decode;
-    
-    uint8_t data[8];
-    convert_to_digits("12345678", data, 8);
-    for(int i = 0; i < 8; ++i) {
-        assert(data[i] == (i+1));
-    }
-}
-
-void test_main_constructor() {
-    // Fixnum<32> f1{"111", 2};
-    // Fixnum<4> f2{"F", 16};
-    // Fixnum<5> f3{"10101", 2};
-    // try {
-    //     Fixnum<4> f4{"FF", 16};
-    //     assert(false);
-    // }
-    // catch(std::overflow_error& e) {
-    //     assert(true);
-    // }
-
-    // Fixnum<3> f5{"11", 2};
-    // uint8_t f5u = 3;
-    // std::cout << (int) f5.data()[0] << "\n";
-    // assert(f5.data()[0] == f5u); 
-}
-
 void test_int_basics() {
     using namespace decode;
+
+    assert(Fixnum<8>(100).str() == "100");
+    assert(Fixnum<8>(127).str() == "127");
+    assert(Fixnum<8>(128).str() == "-128");
+    assert(Fixnum<8>(-128).str() == "-128");
     
     Fixnum<32> from_short(static_cast<int16_t>(400));
     assert(from_short == Fixnum<32>(400));
@@ -165,6 +152,8 @@ void test_complement() {
     Fixnum<3> val_min(-4);
     assert(val_min.str() == "-4");
     assert(val_min.complement().str() == "-4");
+
+    assert(Fixnum<8>(18).complement().str() == "-18");
 }
 
 void test_cast() {
@@ -182,6 +171,11 @@ void test_cast() {
 
     Fixnum<32> neg4(-4);
     assert(neg4 == min_val32);
+
+    Fixnum<8> single1 = fixnum_cast<8>(Fixnum<16>(120));
+    assert(single1.str() == "120");
+
+    assert(fixnum_cast<8>(Fixnum<16>(128)).str() == "-128");
 }
 
 void test_sign_extend() {
@@ -228,6 +222,7 @@ void test_add() {
     assert(two == Fixnum<19>(-142));
 
     assert((Fixnum<23>(450) + Fixnum<23>(900)) == Fixnum<23>(1350));
+    assert(Fixnum<8>(10) + Fixnum<8>(11) == Fixnum<8>(21));
 }
 
 void test_subtract() {
@@ -237,6 +232,7 @@ void test_subtract() {
     assert(one == two);
 
     assert((Fixnum<31>(100000000) - Fixnum<31>(99000000)) == Fixnum<31>(1000000));
+    assert(Fixnum<8>(100) - Fixnum<8>(200) == Fixnum<8>(-100));
 }
 
 void test_shifting() {
@@ -259,6 +255,9 @@ void test_shifting() {
     assert((three << 1).str()[0] == '-');
     assert((three << 3).str() == "0");
     assert((three >> 3).str(16) == "1800");
+
+    assert(Fixnum<8>((0x7F) >> 3) == Fixnum<8>(0xF));
+    assert(Fixnum<8>(0xF << 3) == Fixnum<8>(0x78));
 }
 
 void test_multiplication() {
@@ -284,6 +283,7 @@ void test_multiplication() {
     assert(overflow.str() == "-727379968");
 
     assert((Fixnum<32>(1000000) * Fixnum<32>(1000000)).str() == "-727379968");
+    assert(Fixnum<8>(10) * Fixnum<8>(10) == Fixnum<8>(100));
 }
 
 void test_increment_decrement() {
@@ -308,12 +308,12 @@ void test_increment_decrement() {
 
 void test_bit_operator() {
     Fixnum<8> one(8);
-    assert(one[4] == 1);
-    assert(one[5] == 0);
+    assert(one[3] == 1);
+    assert(one[4] == 0);
 
     Fixnum<24> tf(0x100000);
-    assert(tf[21] == 1);
-    assert(tf[22] == 0);
+    assert(tf[20] == 1);
+    assert(tf[21] == 0);
 }
 
 void test_unary_pos_neg() {
@@ -322,6 +322,9 @@ void test_unary_pos_neg() {
 
     Fixnum<9> two(-21);
     assert(-two == Fixnum<9>(21));
+
+    assert(-Fixnum<8>(10) == Fixnum<8>(-10));
+    assert(-Fixnum<8>(-127) == Fixnum<8>(127));
 }
 
 void test_same_representation() {
@@ -330,8 +333,12 @@ void test_same_representation() {
     Fixnum<31> two(-1400);
     assert(one.str() == two.str());
     
+    for(int i = 0; i < Fixnum<31>::bits; ++i) {
+        assert(one[i] == two[i]);
+    }
+
     for(int i = 0; i < Fixnum<31>::slots; ++i) {
-        assert(one.data()[i] == two.data()[i]);
+        assert(one.byte(i) == two.byte(i));
     }
 }
 
@@ -349,9 +356,12 @@ void test_initializer_list() {
     Fixnum<32> bigger = { narrow_cast<uint8_t>(0x52), narrow_cast<uint8_t>(0x52),
                           narrow_cast<uint8_t>(0x52), narrow_cast<uint8_t>(0x52) };
     assert(bigger.str(16) == "52525252");
+    assert(Fixnum<8> { narrow_cast<uint8_t>(0xFF) }.str() == "-1");
 }
 
 void test_cmp() {
+    using bit8 = Fixnum<8>;
+        
     Fixnum<16> one(0x8123);
     Fixnum<16> one1(0x8123);
     Fixnum<16> two(0x8124);
@@ -368,9 +378,15 @@ void test_cmp() {
     assert(one > three);
     assert(one < four);
     assert(four > one);
+
+    assert(bit8(1) == bit8(1));
+    assert(bit8(1) > bit8(0));
+    assert(bit8(1) < bit8(2));
 }
 
 void test_ands_ors() {
+    using bit8 = Fixnum<8>;
+    
     Fixnum<13> one(0xFFF);
     Fixnum<13> toAnd(0x40);
 
@@ -389,9 +405,14 @@ void test_ands_ors() {
     three ^= toXor;
     assert(three.str(16) == "FF");
     assert((Fixnum<13>(0xAA) ^ Fixnum<13>(0x55)).str(16) == "FF");
+
+    assert((bit8(0xF) | bit8(0x70)) == bit8(127));
+    assert((bit8(0xF) & bit8(0x70)) == bit8(0));
 }
 
 void test_division() {
+    using bit8 = Fixnum<8>;
+    
     try {
         Fixnum<25> one(100);
         one /= Fixnum<25>(0);
@@ -447,13 +468,14 @@ void test_division() {
     assert(seventh_dividend.str() == "739");
 
     assert((Fixnum<32>(123456789) % Fixnum<32>(925)).str() == "739");
+    assert(bit8(100) / bit8(10) == bit8(10));
 }
 
 void test_bit_set() {
-    assert(Fixnum<8>(1).fsb() == 1);
-    assert(Fixnum<8>(8).fsb() == 4);
-    assert(Fixnum<32>(0x1000).fsb() == 13);
-    assert(Fixnum<32>(0x2000).fsb() == 14);
+    assert(Fixnum<8>(1).fsb() == 0);
+    assert(Fixnum<8>(8).fsb() == 3);
+    assert(Fixnum<32>(0x1000).fsb() == 12);
+    assert(Fixnum<32>(0x2000).fsb() == 13);
 }
 
 void test_string_constructors() {
@@ -489,7 +511,6 @@ int main(int argc, char* argv[]) {
     test_convert_to_digits();
     
     test_slots();
-    test_main_constructor();
 
     test_int_basics();
     test_complement();
