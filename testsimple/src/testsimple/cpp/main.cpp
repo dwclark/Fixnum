@@ -251,7 +251,7 @@ void test_add() {
     assert(bit8(10) + bit8(11) == bit8(21));
     assert(bit16(0x800) + bit16(0x800) == bit16(0x1000));
     assert(bit32(0x400000) + bit32(0x400000) == bit32(0x800000));
-    assert(bit64(0x400000C00000L) + bit64(0x400000C00000L) == bit64(0x800001800000L));
+    assert(bit64(static_cast<int64_t>(0x400000C00000L)) + bit64(static_cast<int64_t>(0x400000C00000L)) == bit64(static_cast<int64_t>(0x800001800000L)));
 }
 
 void test_subtract() {
@@ -264,7 +264,7 @@ void test_subtract() {
     assert(bit8(100) - bit8(200) == bit8(-100));
     assert(bit16(0x1000) - bit16(0x800) == bit16(0x800));
     assert(bit32(0x800000) - bit32(0x400000) == bit32(0x400000));
-    assert(bit64(0x800001800000L) - bit64(0x400000C00000L) == bit64(0x400000C00000L));
+    assert(bit64(static_cast<int64_t>(0x800001800000L)) - bit64(static_cast<int64_t>(0x400000C00000L)) == bit64(static_cast<int64_t>(0x400000C00000L)));
 }
 
 void test_shifting() {
@@ -288,8 +288,8 @@ void test_shifting() {
     two >>= 1;
     assert(two.str(16) == "606060");
 
-    assert((bit64(0x204000L) << 31) == bit64(0x10200000000000L));
-    assert((bit64(0x10200000000000L) >> 13) == bit64(0x8100000000));
+    assert((bit64(static_cast<int64_t>(0x204000L)) << 31) == bit64(static_cast<int64_t>(0x10200000000000L)));
+    assert((bit64(static_cast<int64_t>(0x10200000000000L)) >> 13) == bit64(static_cast<int64_t>(0x8100000000)));
     
     Fixnum<17> three(0xC000);
     assert((three << 1).str()[0] == '-');
@@ -321,7 +321,7 @@ void test_multiplication() {
 
     assert((bit32(1000000) * bit32(1000000)).str() == "-727379968");
     assert(bit8(10) * bit8(10) == bit8(100));
-    assert(bit64(0x8100000000L) * bit64(0x255L) == bit64(0x12CD500000000L));
+    assert(bit64(static_cast<int64_t>(0x8100000000L)) * bit64(static_cast<int64_t>(0x255L)) == bit64(static_cast<int64_t>(0x12CD500000000L)));
 }
 
 void test_increment_decrement() {
@@ -351,15 +351,15 @@ void test_increment_decrement() {
     assert((bit32(0x40000000)--).str(16) == "40000000");
     assert((--bit32(0x40000000)).str(16) == "3FFFFFFF");
 
-    assert((++bit64(0x12CD500000000L)).str(16) == "12CD500000001");
-    assert((bit64(0x12CD500000000L)++).str(16) == "12CD500000000");
-    assert((--bit64(0x12CD500000000L)).str(16) == "12CD4FFFFFFFF");
-    assert((bit64(0x12CD500000000L)--).str(16) == "12CD500000000");
+    assert((++bit64(static_cast<int64_t>(0x12CD500000000L))).str(16) == "12CD500000001");
+    assert((bit64(static_cast<int64_t>(0x12CD500000000L))++).str(16) == "12CD500000000");
+    assert((--bit64(static_cast<int64_t>(0x12CD500000000L))).str(16) == "12CD4FFFFFFFF");
+    assert((bit64(static_cast<int64_t>(0x12CD500000000L))--).str(16) == "12CD500000000");
 
-    assert((++Fixnum<100>(0x12CD500000000L)).str(16) == "12CD500000001");
-    assert((Fixnum<100>(0x12CD500000000L)++).str(16) == "12CD500000000");
-    assert((--Fixnum<100>(0x12CD500000000L)).str(16) == "12CD4FFFFFFFF");
-    assert((Fixnum<100>(0x12CD500000000L)--).str(16) == "12CD500000000");
+    assert((++Fixnum<100>(static_cast<int64_t>(0x12CD500000000L))).str(16) == "12CD500000001");
+    assert((Fixnum<100>(static_cast<int64_t>(0x12CD500000000L))++).str(16) == "12CD500000000");
+    assert((--Fixnum<100>(static_cast<int64_t>(0x12CD500000000L))).str(16) == "12CD4FFFFFFFF");
+    assert((Fixnum<100>(static_cast<int64_t>(0x12CD500000000L))--).str(16) == "12CD500000000");
 
     assert((--bit8::lowest()).is_positive());
     assert((++bit8::max()).is_negative());
@@ -492,9 +492,9 @@ void test_cmp() {
     assert(bit32(0x7FFFFFFE) < bit32(0x7FFFFFFF));
     assert(bit32(0x7FFFFFFF) == bit32(0x7FFFFFFF));
 
-    assert(bit64(0x7FFFFFFFFFFFFFFFL) > bit64(0x7FFFFFFFFFFFFFFEL));
-    assert(bit64(0x7FFFFFFFFFFFFFFEL) < bit64(0x7FFFFFFFFFFFFFFFL));
-    assert(bit64(0x7FFFFFFFFFFFFFFFL) == bit64(0x7FFFFFFFFFFFFFFFL));
+    assert(bit64(static_cast<int64_t>(0x7FFFFFFFFFFFFFFFL)) > bit64(static_cast<int64_t>(0x7FFFFFFFFFFFFFFEL)));
+    assert(bit64(static_cast<int64_t>(0x7FFFFFFFFFFFFFFEL)) < bit64(static_cast<int64_t>(0x7FFFFFFFFFFFFFFFL)));
+    assert(bit64(static_cast<int64_t>(0x7FFFFFFFFFFFFFFFL)) == bit64(static_cast<int64_t>(0x7FFFFFFFFFFFFFFFL)));
 
     assert(Fixnum<128>("7FFFFFFFFFFFFFFFFFFF", 16) > Fixnum<128>("7FFFFFFFFFFFFFFFFFFE", 16));
     assert(Fixnum<128>("7FFFFFFFFFFFFFFFFFFE", 16) < Fixnum<128>("7FFFFFFFFFFFFFFFFFFF", 16));
@@ -530,8 +530,8 @@ void test_ands_ors() {
     assert((bit32(0xFFFF) | bit32(0x7FFF0000)) == bit32(0x7FFFFFFF));
     assert((bit32(0xFFFF) & bit32(0x7FFF0000)) == bit32(0));
 
-    assert((bit64(0xFFFFFFFFL) | bit64(0x7FFFFFFF00000000L)) == bit64(0x7FFFFFFFFFFFFFFFL));
-    assert((bit64(0xFFFFFFFFL) & bit64(0x7FFFFFFF00000000L)) == bit64(0));
+    assert((bit64(static_cast<int64_t>(0xFFFFFFFFL)) | bit64(static_cast<int64_t>(0x7FFFFFFF00000000L))) == bit64(static_cast<int64_t>(0x7FFFFFFFFFFFFFFFL)));
+    assert((bit64(static_cast<int64_t>(0xFFFFFFFFL)) & bit64(static_cast<int64_t>(0x7FFFFFFF00000000L))) == bit64(0));
 
     assert((Fixnum<128>("FFFFFFFFFF", 16) | Fixnum<128>("7FFFFFFF0000000000", 16)) == Fixnum<128>("7FFFFFFFFFFFFFFFFF", 16));
     assert((Fixnum<128>("FFFFFFFFFF", 16) & Fixnum<128>("7FFFFFFF0000000000", 16)) == Fixnum<128>(0));
@@ -598,7 +598,7 @@ void test_division() {
     assert(bit8(100) / bit8(10) == bit8(10));
     assert(bit16(10000) / bit16(100) == bit16(100));
     assert(bit32(100000000) / bit32(1000) == bit32(100000));
-    assert(bit64(10000000000000000L) / bit64(1000000) == bit64(10000000000));
+    assert(bit64(static_cast<int64_t>(10000000000000000L)) / bit64(1000000) == bit64(static_cast<int64_t>(10000000000L)));
     assert(bit256("100000000000000000000", 10) / bit256("1000000000", 10) == bit256("100000000000", 10));
 }
 
@@ -756,6 +756,4 @@ int main(int argc, char* argv[]) {
     auto end2 = system_clock::now();
 
     std::cout << "target2: " << target2.str() << " " << nanoseconds(end2 - start2).count() << std::endl;
-
-    std::cout << "LONG_MAX: " << LONG_MAX << " LLONG_MAX: " << LLONG_MAX << std::endl;
 }

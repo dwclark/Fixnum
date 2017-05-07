@@ -117,10 +117,6 @@ public:
         }
     }
 
-#if LONG_MAX != LLONG_MAX
-    Fixnum(const long val) : Fixnum(static_cast<int64_t>(val)) {}
-#endif
-
     Fixnum(const int64_t val) : Fixnum() {
         _data[0] = val & 0xFF;
         if(bytes >= 2) _data[1] = (val >> 8) & 0xFF;
@@ -759,10 +755,6 @@ public:
     
     Fixnum(const int32_t val) : Fixnum(static_cast<int8_t>(val)) {}
 
-#if LONG_MAX != LLONG_MAX
-    Fixnum(const long val) : Fixnum(static_cast<int8_t>(val)) {}
-#endif
-    
     Fixnum(const int64_t val) : Fixnum(static_cast<int8_t>(val)) {}
 
     Fixnum& operator=(const Fixnum& f) {
@@ -1035,10 +1027,6 @@ public:
 
     Fixnum(const int32_t val) : Fixnum(static_cast<int16_t>(val)) {}
 
-#if LONG_MAX != LLONG_MAX
-    Fixnum(const long val) : Fixnum(static_cast<int16_t>(val)) {}
-#endif
-    
     Fixnum(const int64_t val) : Fixnum(static_cast<int16_t>(val)) {}
 
     Fixnum& operator=(const Fixnum& f) {
@@ -1324,10 +1312,6 @@ public:
     
     Fixnum(const int32_t val) : _data { val } {}
 
-#if LONG_MAX != LLONG_MAX
-    Fixnum(const long val) : Fixnum(static_cast<int32_t>(val)) {}
-#endif
-    
     Fixnum(const int64_t val) : Fixnum(static_cast<int32_t>(val)) {}
 
     Fixnum& operator=(const Fixnum& f) {
@@ -1625,10 +1609,6 @@ public:
     Fixnum(const int16_t val) : Fixnum(static_cast<int64_t>(val)) {}
     
     Fixnum(const int32_t val) : Fixnum(static_cast<int64_t>(val)) {}
-
-#if LONG_MAX != LLONG_MAX
-    Fixnum(const long val) : Fixnum(static_cast<int64_t>(val)) {}
-#endif
 
     Fixnum(const int64_t val) : _data { val } {}
 
