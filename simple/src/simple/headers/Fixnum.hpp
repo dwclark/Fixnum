@@ -28,13 +28,13 @@ public:
     static constexpr int sign_mask = 0x80 >> ((bytes * 8) - N);
     static constexpr int unsigned_mask = 0xFF >> (1 + (bytes * 8) - N);
 
-    static constexpr Fixnum lowest() {
+    static Fixnum lowest() {
         Fixnum fn;
         fn._data[top_index] = sign_mask;
         return fn;
     }
 
-    static constexpr Fixnum max() {
+    static Fixnum max() {
         Fixnum fn;
         fn._data[top_index] = unsigned_mask;
         for(int i = 0; i < top_index; ++i) {
@@ -701,15 +701,15 @@ public:
     static constexpr int bytes = 1;
     static constexpr int hex_bytes = bytes * 2;
     
-    static constexpr Fixnum lowest() {
+    static Fixnum lowest() {
         return Fixnum(std::numeric_limits<int8_t>::lowest());
     }
 
-    static constexpr Fixnum max() {
+    static Fixnum max() {
         return Fixnum(std::numeric_limits<int8_t>::max());
     }
     
-    constexpr Fixnum() : _data { 0 } {}
+    Fixnum() : _data { 0 } {}
 
     Fixnum(const Fixnum& f) {
         _data = f._data;
@@ -749,19 +749,19 @@ public:
         }
     }
 
-    constexpr Fixnum(const int8_t val) : Fixnum() {
+    Fixnum(const int8_t val) : Fixnum() {
         _data = val;
     }
     
-    constexpr Fixnum(const int16_t val) : Fixnum() {
+    Fixnum(const int16_t val) : Fixnum() {
         _data = val;
     }
     
-    constexpr Fixnum(const int32_t val) : Fixnum() {
+    Fixnum(const int32_t val) : Fixnum() {
         _data = val;
     }
 
-    constexpr Fixnum(const int64_t val) : Fixnum(0) {
+    Fixnum(const int64_t val) : Fixnum(0) {
         _data = val;
     }
 
@@ -980,15 +980,15 @@ public:
     static constexpr int bytes = 2;
     static constexpr int hex_bytes = bytes * 2;
     
-    static constexpr Fixnum lowest() {
+    static Fixnum lowest() {
         return Fixnum(std::numeric_limits<int16_t>::lowest());
     }
 
-    static constexpr Fixnum max() {
+    static Fixnum max() {
         return Fixnum(std::numeric_limits<int16_t>::max());
     }
     
-    constexpr Fixnum() : _data { 0 } {}
+    Fixnum() : _data { 0 } {}
 
     Fixnum(const Fixnum& f) {
         _data = f._data;
@@ -1029,19 +1029,19 @@ public:
         }
     }
 
-    constexpr Fixnum(const int8_t val) : Fixnum() {
+    Fixnum(const int8_t val) : Fixnum() {
         _data = val;
     }
     
-    constexpr Fixnum(const int16_t val) : Fixnum() {
+    Fixnum(const int16_t val) : Fixnum() {
         _data = val;
     }
     
-    constexpr Fixnum(const int32_t val) : Fixnum() {
+    Fixnum(const int32_t val) : Fixnum() {
         _data = val;
     }
 
-    constexpr Fixnum(const int64_t val) : Fixnum(0) {
+    Fixnum(const int64_t val) : Fixnum(0) {
         _data = val;
     }
 
@@ -1272,15 +1272,15 @@ public:
     static constexpr int bytes = 4;
     static constexpr int hex_bytes = bytes * 2;
     
-    static constexpr Fixnum lowest() {
+    static Fixnum lowest() {
         return Fixnum(std::numeric_limits<int32_t>::lowest());
     }
 
-    static constexpr Fixnum max() {
+    static Fixnum max() {
         return Fixnum(std::numeric_limits<int32_t>::max());
     }
     
-    constexpr Fixnum() : _data { 0 } {}
+    Fixnum() : _data { 0 } {}
 
     Fixnum(const Fixnum& f) {
         _data = f._data;
@@ -1322,19 +1322,19 @@ public:
         }
     }
 
-    constexpr Fixnum(const int8_t val) : Fixnum() {
+    Fixnum(const int8_t val) : Fixnum() {
         _data = val;
     }
     
-    constexpr Fixnum(const int16_t val) : Fixnum() {
+    Fixnum(const int16_t val) : Fixnum() {
         _data = val;
     }
     
-    constexpr Fixnum(const int32_t val) : Fixnum() {
+    Fixnum(const int32_t val) : Fixnum() {
         _data = val;
     }
 
-    constexpr Fixnum(const int64_t val) : Fixnum() {
+    Fixnum(const int64_t val) : Fixnum() {
         _data = val;
     }
 
@@ -1579,15 +1579,15 @@ public:
     static constexpr int bytes = 8;
     static constexpr int hex_bytes = bytes * 2;
     
-    static constexpr Fixnum lowest() {
+    static Fixnum lowest() {
         return Fixnum(std::numeric_limits<int64_t>::lowest());
     }
 
-    static constexpr Fixnum max() {
+    static Fixnum max() {
         return Fixnum(std::numeric_limits<int64_t>::max());
     }
     
-    constexpr Fixnum() : _data { 0 } {}
+    Fixnum() : _data { 0 } {}
 
     Fixnum(const Fixnum& f) {
         _data = f._data;
@@ -1628,19 +1628,19 @@ public:
         }
     }
 
-    constexpr Fixnum(const int8_t val) : Fixnum() {
+    Fixnum(const int8_t val) : Fixnum() {
         _data = val;
     }
     
-    constexpr Fixnum(const int16_t val) : Fixnum() {
+    Fixnum(const int16_t val) : Fixnum() {
         _data = val;
     }
     
-    constexpr Fixnum(const int32_t val) : Fixnum() {
+    Fixnum(const int32_t val) : Fixnum() {
         _data = val;
     }
 
-    constexpr Fixnum(const int64_t val) : Fixnum() {
+    Fixnum(const int64_t val) : Fixnum() {
         _data = val;
     }
 
