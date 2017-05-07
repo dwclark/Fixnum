@@ -9,8 +9,12 @@ project(":simple") {
 
         binaries {
             all {
-                if(toolChain in Gcc && buildType == buildTypes.debug) {
+                if((toolChain in Gcc || toolChain in Clang) && buildType == buildTypes.debug) {
                     cppCompiler.args "-g"
+                }
+                
+                if((toolChain in Gcc || toolChain in Clang) && buildType == buildTypes.release) {
+                    cppCompiler.args "-O2"
                 }
 
                 if(toolChain in Clang) {
@@ -37,8 +41,12 @@ project(':testsimple') {
         
         binaries {
             all {
-                if(toolChain in Gcc && buildType == buildTypes.debug) {
+                if((toolChain in Gcc || toolChain in Clang) && buildType == buildTypes.debug) {
                     cppCompiler.args "-g"
+                }
+
+                if((toolChain in Gcc || toolChain in Clang) && buildType == buildTypes.release) {
+                    cppCompiler.args "-O2"
                 }
 
                 if(toolChain in Clang) {

@@ -15,17 +15,18 @@
 #include <limits>
 #include <cstring>
 #include <array>
+#include <type_traits>
 
 template<size_t N>
 class Fixnum {
 public:
     static constexpr size_t bits = N;
-    static constexpr int slots = (N / 8) + ((N % 8) > 0 ? 1 : 0);
-    static constexpr int hex_slots = slots * 2;
-    static constexpr int top_index = slots - 1;
-    static constexpr int top_mask = 0xFF >> ((slots * 8) - N);
-    static constexpr int sign_mask = 0x80 >> ((slots * 8) - N);
-    static constexpr int unsigned_mask = 0xFF >> (1 + (slots * 8) - N);
+    static constexpr int bytes = (N / 8) + ((N % 8) > 0 ? 1 : 0);
+    static constexpr int hex_bytes = bytes * 2;
+    static constexpr int top_index = bytes - 1;
+    static constexpr int top_mask = 0xFF >> ((bytes * 8) - N);
+    static constexpr int sign_mask = 0x80 >> ((bytes * 8) - N);
+    static constexpr int unsigned_mask = 0xFF >> (1 + (bytes * 8) - N);
 
     static constexpr Fixnum lowest() {
         Fixnum fn;
@@ -55,11 +56,11 @@ public:
 
     Fixnum(const std::initializer_list<uint8_t> init) : _data { 0 } {
         const uint8_t* ptr = init.begin();
-        for(int i = 0; i < init.size() && i < slots; ++i) {
+        for(int i = 0; i < init.size() && i < bytes; ++i) {
             _data[i] = ptr[i];
         }
 
-        if(slots <= init.size()) {
+        if(bytes <= init.size()) {
             _truncate();
         }
     }
@@ -73,10 +74,10 @@ public:
             return;
         }
 
-        const bool overflows = (slots * 2) < cb.converted.size();
+        const bool overflows = (bytes * 2) < cb.converted.size();
         
         int source_index = cb.converted.size() - 1;
-        for(int i = 0; i < slots; ++i) {
+        for(int i = 0; i < bytes; ++i) {
             if(source_index < 0) break;
             _data[i] = cb.converted[source_index--];
              if(source_index < 0) break;
@@ -90,10 +91,10 @@ public:
     
     Fixnum(const int16_t val) : Fixnum() {
         _data[0] = val & 0xFF;
-        if(slots >= 2) _data[1] = (val >> 8) & 0xFF;
+        if(bytes >= 2) _data[1] = (val >> 8) & 0xFF;
         
         //sign extend if needed
-        if(slots > 2) {
+        if(bytes > 2) {
             sign_extend(15);
         }
         else {
@@ -103,12 +104,12 @@ public:
     
     Fixnum(const int32_t val) : Fixnum() {
         _data[0] = val & 0xFF;
-        if(slots >= 2) _data[1] = (val >> 8) & 0xFF;
-        if(slots >= 3) _data[2] = (val >> 16) & 0xFF;
-        if(slots >= 4) _data[3] = (val >> 24) & 0xFF;
+        if(bytes >= 2) _data[1] = (val >> 8) & 0xFF;
+        if(bytes >= 3) _data[2] = (val >> 16) & 0xFF;
+        if(bytes >= 4) _data[3] = (val >> 24) & 0xFF;
 
         //sign extend if needed
-        if(slots > 4) {
+        if(bytes > 4) {
             sign_extend(31);
         }
         else {
@@ -118,16 +119,16 @@ public:
 
     Fixnum(const int64_t val) : Fixnum(0) {
         _data[0] = val & 0xFF;
-        if(slots >= 2) _data[1] = (val >> 8) & 0xFF;
-        if(slots >= 3) _data[2] = (val >> 16) & 0xFF;
-        if(slots >= 4) _data[3] = (val >> 24) & 0xFF;
-        if(slots >= 5) _data[4] = (val >> 32) & 0xFF;
-        if(slots >= 6) _data[5] = (val >> 40) & 0xFF;
-        if(slots >= 7) _data[6] = (val >> 48) & 0xFF;
-        if(slots >= 8) _data[7] = (val >> 56) & 0xFF;
+        if(bytes >= 2) _data[1] = (val >> 8) & 0xFF;
+        if(bytes >= 3) _data[2] = (val >> 16) & 0xFF;
+        if(bytes >= 4) _data[3] = (val >> 24) & 0xFF;
+        if(bytes >= 5) _data[4] = (val >> 32) & 0xFF;
+        if(bytes >= 6) _data[5] = (val >> 40) & 0xFF;
+        if(bytes >= 7) _data[6] = (val >> 48) & 0xFF;
+        if(bytes >= 8) _data[7] = (val >> 56) & 0xFF;
 
         //sign extend if needed
-        if(slots > 8) {
+        if(bytes > 8) {
             sign_extend(63);
         }
         else {
@@ -146,7 +147,7 @@ public:
     }
 
     bool operator==(const Fixnum& rhs) const {
-        return memcmp(_data, rhs._data, slots) == 0;
+        return memcmp(_data, rhs._data, bytes) == 0;
     }
 
     bool operator!=(const Fixnum& rhs) const {
@@ -174,12 +175,6 @@ public:
         return *this;
     }
 
-    Fixnum operator+(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret += n;
-        return ret;
-    }
-
     Fixnum& operator++() {
         _add_one(_data);
         return *this;
@@ -194,12 +189,6 @@ public:
     Fixnum& operator-=(const Fixnum& rhs) {
         _add_to(_data, rhs.complement()._data);
         return *this;
-    }
-
-    Fixnum operator-(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret -= n;
-        return ret;
     }
 
     Fixnum& operator--() {
@@ -246,12 +235,6 @@ public:
         return *this;
     }
 
-    Fixnum operator*(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret *= n;
-        return ret;
-    }
-
     Fixnum& operator/=(const Fixnum& n) {
         _check_divide_by_zero(n);
         Fixnum dividend { *this };
@@ -260,25 +243,13 @@ public:
         return *this;
     }
 
-    Fixnum operator/(const Fixnum& n) {
-        Fixnum ret { *this };
-        ret /= n;
-        return ret;
-    }
-
     Fixnum& operator%=(const Fixnum& n) {
         _check_divide_by_zero(n);
         Fixnum dividend { *this };
         Fixnum divisor { n };
         _div_and_mod(*this, dividend, divisor);
-        std::memcpy(_data, dividend._data, slots);
+        std::memcpy(_data, dividend._data, bytes);
         return *this;
-    }
-
-    Fixnum operator%(const Fixnum& n) {
-        Fixnum ret = { *this };
-        ret %= n;
-        return ret;
     }
 
     Fixnum& operator<<=(const int by) {
@@ -291,12 +262,6 @@ public:
         return *this;
     }
 
-    Fixnum operator<<(const int by) const {
-        Fixnum ret { *this };
-        ret <<= by;
-        return ret;
-    }
-
     Fixnum& operator>>=(const int by) {
         switch(by) {
         case 0: break;
@@ -307,14 +272,8 @@ public:
         return *this;
     }
 
-    Fixnum operator>>(const int by) const {
-        Fixnum ret { *this };
-        ret >>= by;
-        return ret;
-    }
-
     Fixnum& operator&=(const Fixnum& n) {
-        for(int i = 0; i < slots; ++i) {
+        for(int i = 0; i < bytes; ++i) {
             _data[i] &= n._data[i];
         }
 
@@ -322,14 +281,8 @@ public:
         return *this;
     }
 
-    Fixnum operator&(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret &= n;
-        return ret;
-    }
-
     Fixnum& operator|=(const Fixnum& n) {
-        for(int i = 0; i < slots; ++i) {
+        for(int i = 0; i < bytes; ++i) {
             _data[i] |= n._data[i];
         }
 
@@ -337,14 +290,8 @@ public:
         return *this;
     }
 
-    Fixnum operator|(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret |= n;
-        return ret;
-    }
-
     Fixnum& operator^=(const Fixnum& n) {
-        for(int i = 0; i < slots; ++i) {
+        for(int i = 0; i < bytes; ++i) {
             _data[i] ^= n._data[i];
         }
 
@@ -352,13 +299,7 @@ public:
         return (*this);
     }
 
-    Fixnum operator^(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret ^= n;
-        return ret;
-    }
-
-    int operator[](const int index) const {
+    bool operator[](const int index) const {
         return bit(index);
     }
 
@@ -440,9 +381,9 @@ public:
             return std::string("-") + complement().str(base);
         }
         else {
-            uint8_t pos_hex[hex_slots] = { 0 };
+            uint8_t pos_hex[hex_bytes] = { 0 };
             _single_hex_values(pos_hex);
-            std::string ret = decode::convert_pos_str<hex_slots>(pos_hex, base);
+            std::string ret = decode::convert_pos_str<hex_bytes>(pos_hex, base);
             return !is_lowest() ? ret : std::string("-") + ret;
         }
     }
@@ -454,39 +395,40 @@ public:
     }
 
     const uint8_t byte(const int index) const {
+        if(index > top_index || index < 0) {
+            throw std::overflow_error("can't access bits beyond size of fixnum");
+        }
+        
         return _data[index];
     }
 
     void byte(const int index, const uint8_t b) {
+        if(index >= top_index || index < 0) {
+            throw std::overflow_error("can't access bits beyond size of fixnum");
+        }
+        
         _data[index] = b;
     }
 
-    int bit(const int index) const {
+    bool bit(const int index) const {
         if(index >= N || index < 0) {
             throw std::overflow_error("can't access bits beyond size of fixnum");
         }
         
-        return _is_bit_set(_data, index) ? 1 : 0;
+        return _is_bit_set(_data, index);
     }
 
-    Fixnum& set_bit(const int index) {
-        if(index >= N || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-        
-        _set_bit(_data, index);
-        return *this;
-    }
-
-    Fixnum& unset_bit(const int index) {
+    Fixnum& bit(const int index, const bool val) {
         if(index >= N || index < 0) {
             throw std::overflow_error("can't access bits beyond size of fixnum");
         }
 
-        _unset_bit(_data, index);
+        if(val) _set_bit(_data, index);
+        else _unset_bit(_data, index);
+
         return *this;
     }
-
+    
     void sign_extend(const int bit) {
         const int slot = bit / 8;
         const int pos = (bit % 8);
@@ -501,7 +443,7 @@ public:
             _data[slot] &= (0xFF >> (8-(pos+1)));
         }
         
-        for(int i = slot + 1; i < slots; ++i) {
+        for(int i = slot + 1; i < bytes; ++i) {
             _data[i] = beyond_current;
         }
 
@@ -509,7 +451,7 @@ public:
     }
     
 private:
-    uint8_t _data[slots];
+    uint8_t _data[bytes];
 
     bool _is_bit_set(const uint8_t* d, const int bit) const {
         const int index = bit / 8;
@@ -534,7 +476,7 @@ private:
     
     void _add_to(uint8_t* target, const uint8_t* n) {
         uint16_t rem = 0;
-        for(int i = 0; i < slots; ++i) {
+        for(int i = 0; i < bytes; ++i) {
             const uint16_t sum = (uint16_t) target[i] + (uint16_t) n[i] + rem;
             target[i] = sum & 0xFF;
             rem = (sum & 0xF00) >> 8;
@@ -549,7 +491,7 @@ private:
         uint8_t rem = (sum & 0xF00) >> 8;
         int i = 1;
         
-        while(rem > 0 && i < slots) {
+        while(rem > 0 && i < bytes) {
             sum = (uint16_t) target[i] + rem;
             target[i] = sum & 0xFF;
             rem = (sum & 0xF00) >> 8;
@@ -561,13 +503,13 @@ private:
 
     void _subtract_one(uint8_t* target) {
         int nonzero_slot;
-        for(nonzero_slot = 0; nonzero_slot < slots; ++nonzero_slot) {
+        for(nonzero_slot = 0; nonzero_slot < bytes; ++nonzero_slot) {
             if(target[nonzero_slot] != 0) {
                 break;
             }
         }
 
-        if(nonzero_slot == slots) {
+        if(nonzero_slot == bytes) {
             _fill_1(target);
         }
         else {
@@ -582,7 +524,7 @@ private:
     }
 
     void _complement(uint8_t* d) {
-        for(int i = 0; i < slots; ++i) {
+        for(int i = 0; i < bytes; ++i) {
             d[i] = ~d[i];
         }
 
@@ -594,7 +536,7 @@ private:
     }
 
     void _single_hex_values(uint8_t* d) const {
-        for(int i = 0; i < slots; ++i) {
+        for(int i = 0; i < bytes; ++i) {
             d[2 * i] = _data[i] & 0xF;
             d[(2 * i) + 1] = (_data[i] >> 4) & 0xF;
         }
@@ -609,16 +551,16 @@ private:
     }
 
     static void _zero(uint8_t* d) {
-        std::memset(d, 0, slots);
+        std::memset(d, 0, bytes);
     }
 
     static void _fill_1(uint8_t* d) {
-        std::memset(d, 0xFF, slots);
+        std::memset(d, 0xFF, bytes);
         _truncate(d);
     }
 
     static bool _is_zero(const uint8_t* d) {
-        for(int i = 0; i < slots; ++i) {
+        for(int i = 0; i < bytes; ++i) {
             if(d[i] != 0) {
                 return false;
             }
@@ -756,8 +698,8 @@ class Fixnum<8> {
 public:
     static constexpr size_t N = 8;
     static constexpr size_t bits = N;
-    static constexpr int slots = 1;
-    static constexpr int hex_slots = slots * 2;
+    static constexpr int bytes = 1;
+    static constexpr int hex_bytes = bytes * 2;
     
     static constexpr Fixnum lowest() {
         return Fixnum(std::numeric_limits<int8_t>::lowest());
@@ -792,7 +734,7 @@ public:
             return;
         }
 
-        const bool overflows = (slots * 2) < cb.converted.size();
+        const bool overflows = (bytes * 2) < cb.converted.size();
         
         int source_index = cb.converted.size() - 1;
         if(source_index >= 0) {
@@ -816,11 +758,11 @@ public:
     }
     
     constexpr Fixnum(const int32_t val) : Fixnum() {
-        _data = val & 0xFF;
+        _data = val;
     }
 
     constexpr Fixnum(const int64_t val) : Fixnum(0) {
-        _data = val & 0xFF;
+        _data = val;
     }
 
     Fixnum& operator=(const Fixnum& f) {
@@ -862,12 +804,6 @@ public:
         return *this;
     }
     
-    Fixnum operator+(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret += n;
-        return ret;
-    }
-
     Fixnum& operator++() {
         ++_data;
         return *this;
@@ -882,12 +818,6 @@ public:
     Fixnum& operator-=(const Fixnum& rhs) {
         _data -= rhs._data;
         return *this;
-    }
-
-    Fixnum operator-(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret -= n;
-        return ret;
     }
 
     Fixnum& operator--() {
@@ -910,21 +840,9 @@ public:
         return *this;
     }
 
-    Fixnum operator*(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret *= n;
-        return ret;
-    }
-
     Fixnum& operator/=(const Fixnum& n) {
         _data /= n._data;
         return *this;
-    }
-
-    Fixnum operator/(const Fixnum& n) {
-        Fixnum ret { *this };
-        ret /= n;
-        return ret;
     }
 
     Fixnum& operator%=(const Fixnum& n) {
@@ -932,32 +850,14 @@ public:
         return *this;
     }
 
-    Fixnum operator%(const Fixnum& n) {
-        Fixnum ret = { *this };
-        ret %= n;
-        return ret;
-    }
-
     Fixnum& operator<<=(const int by) {
         _data <<= by;
         return *this;
     }
     
-    Fixnum operator<<(const int by) const {
-        Fixnum ret { *this };
-        ret <<= by;
-        return ret;
-    }
-
     Fixnum& operator>>=(const int by) {
         _data >>= by;
         return *this;
-    }
-
-    Fixnum operator>>(const int by) const {
-        Fixnum ret { *this };
-        ret >>= by;
-        return ret;
     }
 
     Fixnum& operator&=(const Fixnum& n) {
@@ -965,21 +865,9 @@ public:
         return *this;
     }
 
-    Fixnum operator&(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret &= n;
-        return ret;
-    }
-
     Fixnum& operator|=(const Fixnum& n) {
         _data |= n._data;
         return *this;
-    }
-
-    Fixnum operator|(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret |= n;
-        return ret;
     }
 
     Fixnum& operator^=(const Fixnum& n) {
@@ -987,13 +875,7 @@ public:
         return (*this);
     }
 
-    Fixnum operator^(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret ^= n;
-        return ret;
-    }
-
-    int operator[](const int index) const {
+    bool operator[](const int index) const {
         return bit(index);
     }
 
@@ -1034,9 +916,9 @@ public:
             return std::string("-") + complement().str(base);
         }
         else {
-            uint8_t pos_hex[hex_slots] = { static_cast<uint8_t>(0xF & _data),
+            uint8_t pos_hex[hex_bytes] = { static_cast<uint8_t>(0xF & _data),
                                            static_cast<uint8_t>(0xF & (_data >> 4)) };
-            std::string ret = decode::convert_pos_str<hex_slots>(pos_hex, base);
+            std::string ret = decode::convert_pos_str<hex_bytes>(pos_hex, base);
             return !is_lowest() ? ret : std::string("-") + ret;
         }
     }
@@ -1048,44 +930,30 @@ public:
     }
 
     const uint8_t byte(const int index) const {
-        if(index != 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-        
-        return 0xFF & _data;
+        if(index == 0) return 0xFF & _data;
+        else throw std::overflow_error("can't access bits beyond size of fixnum");
     }
 
     void byte(const int index, const uint8_t b) {
-        if(index != 0) {
+        if(index == 0) _data = 0xFF & b;
+        else throw std::overflow_error("can't access bits beyond size of fixnum");
+    }
+
+    bool bit(const int index) const {
+        if(index >= N || index < 0) {
+            throw std::overflow_error("can't access bits beyond size of fixnum");
+        }
+
+        return (_data & (1 << index)) != 0;
+    }
+
+    Fixnum& bit(const int index, const bool val) {
+        if(index >= N || index < 0) {
             throw std::overflow_error("can't access bits beyond size of fixnum");
         }
         
-        _data = 0xFF & b;
-    }
-
-    int bit(const int index) const {
-        if(index >= N || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-
-        return (_data & (1 << index)) > 0 ? 1 : 0;
-    }
-
-    Fixnum& set_bit(const int index) {
-        if(index >= N || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-
-        _data |= (1 << index);
-        return *this;
-    }
-
-    Fixnum& unset_bit(const int index) {
-        if(index >= N || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-
-        _data &= ~(1 << index);
+        if(val) _data |= (1 << index);
+        else _data &= ~(1 << index);
         return *this;
     }
 
@@ -1109,8 +977,8 @@ class Fixnum<16> {
 public:
     static constexpr size_t N = 16;
     static constexpr size_t bits = N;
-    static constexpr int slots = 2;
-    static constexpr int hex_slots = slots * 2;
+    static constexpr int bytes = 2;
+    static constexpr int hex_bytes = bytes * 2;
     
     static constexpr Fixnum lowest() {
         return Fixnum(std::numeric_limits<int16_t>::lowest());
@@ -1132,7 +1000,7 @@ public:
 
     Fixnum(const std::initializer_list<uint8_t> init) : _data { 0 } {
         const uint8_t* ptr = init.begin();
-        for(int i = 0, shift_by = 0; i < init.size() && i < slots; ++i, shift_by += 8) {
+        for(int i = 0, shift_by = 0; i < init.size() && i < bytes; ++i, shift_by += 8) {
             _data |= (ptr[i] << shift_by);
         }
     }
@@ -1146,7 +1014,7 @@ public:
             return;
         }
 
-        const bool overflows = (slots * 2) < cb.converted.size();
+        const bool overflows = (bytes * 2) < cb.converted.size();
 
         int source_index, shift_by;
         for(source_index = cb.converted.size() - 1, shift_by = 0;
@@ -1171,11 +1039,11 @@ public:
     }
     
     constexpr Fixnum(const int32_t val) : Fixnum() {
-        _data = val & 0xFFFF;
+        _data = val;
     }
 
     constexpr Fixnum(const int64_t val) : Fixnum(0) {
-        _data = val & 0xFFFF;
+        _data = val;
     }
 
     Fixnum& operator=(const Fixnum& f) {
@@ -1217,12 +1085,6 @@ public:
         return *this;
     }
     
-    Fixnum operator+(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret += n;
-        return ret;
-    }
-
     Fixnum& operator++() {
         ++_data;
         return *this;
@@ -1237,12 +1099,6 @@ public:
     Fixnum& operator-=(const Fixnum& rhs) {
         _data -= rhs._data;
         return *this;
-    }
-
-    Fixnum operator-(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret -= n;
-        return ret;
     }
 
     Fixnum& operator--() {
@@ -1265,21 +1121,9 @@ public:
         return *this;
     }
 
-    Fixnum operator*(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret *= n;
-        return ret;
-    }
-
     Fixnum& operator/=(const Fixnum& n) {
         _data /= n._data;
         return *this;
-    }
-
-    Fixnum operator/(const Fixnum& n) {
-        Fixnum ret { *this };
-        ret /= n;
-        return ret;
     }
 
     Fixnum& operator%=(const Fixnum& n) {
@@ -1287,32 +1131,14 @@ public:
         return *this;
     }
 
-    Fixnum operator%(const Fixnum& n) {
-        Fixnum ret = { *this };
-        ret %= n;
-        return ret;
-    }
-
     Fixnum& operator<<=(const int by) {
         _data <<= by;
         return *this;
     }
     
-    Fixnum operator<<(const int by) const {
-        Fixnum ret { *this };
-        ret <<= by;
-        return ret;
-    }
-
     Fixnum& operator>>=(const int by) {
         _data >>= by;
         return *this;
-    }
-
-    Fixnum operator>>(const int by) const {
-        Fixnum ret { *this };
-        ret >>= by;
-        return ret;
     }
 
     Fixnum& operator&=(const Fixnum& n) {
@@ -1320,21 +1146,9 @@ public:
         return *this;
     }
 
-    Fixnum operator&(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret &= n;
-        return ret;
-    }
-
     Fixnum& operator|=(const Fixnum& n) {
         _data |= n._data;
         return *this;
-    }
-
-    Fixnum operator|(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret |= n;
-        return ret;
     }
 
     Fixnum& operator^=(const Fixnum& n) {
@@ -1342,21 +1156,13 @@ public:
         return (*this);
     }
 
-    Fixnum operator^(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret ^= n;
-        return ret;
-    }
-
-    int operator[](const int index) const {
+    bool operator[](const int index) const {
         return bit(index);
     }
 
     int fsb() const {
-        int b = decode::first_set_bit(_data >> 8);
-        if(b > 0) {
-            return b + 8;
-        }
+        int b = decode::first_set_bit(0xFF & (_data >> 8));
+        if(b > 0) return b + 8;
         
         return decode::first_set_bit(_data & 0xFF);
     }
@@ -1394,12 +1200,12 @@ public:
             return std::string("-") + complement().str(base);
         }
         else {
-            uint8_t pos_hex[hex_slots] = { static_cast<uint8_t>(0xF & _data),
+            uint8_t pos_hex[hex_bytes] = { static_cast<uint8_t>(0xF & _data),
                                            static_cast<uint8_t>(0xF & (_data >> 4)),
                                            static_cast<uint8_t>(0xF & (_data >> 8)),
                                            static_cast<uint8_t>(0xF & (_data >> 12)) };
                                            
-            std::string ret = decode::convert_pos_str<hex_slots>(pos_hex, base);
+            std::string ret = decode::convert_pos_str<hex_bytes>(pos_hex, base);
             return !is_lowest() ? ret : std::string("-") + ret;
         }
     }
@@ -1411,54 +1217,36 @@ public:
     }
 
     const uint8_t byte(const int index) const {
-        if(index > 1 || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-
-        if(index == 0) {
-            return 0xFF & _data;
-        }
-        else {
-            return 0xFF & (_data >> 8);
+        switch(index) {
+        case 0: return 0xFF & _data;
+        case 1: return 0xFF & (_data >> 8);
+        default:throw std::overflow_error("can't access bits beyond size of fixnum");
         }
     }
 
     void byte(const int index, const uint8_t b) {
-        if(index > 1 || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-
-        if(index == 0) {
-            _data = (_data & ~0xFF) | b;
-        }
-        else {
-            _data = (_data & ~(0xFF << 8)) | (b << 8);
+        switch(index) {
+        case 0: _data = (_data & ~0xFF) | b; break;
+        case 1: _data = (_data & ~(0xFF << 8)) | (b << 8); break;
+        default: throw std::overflow_error("can't access bits beyond size of fixnum");
         }
     }
 
-    int bit(const int index) const {
+    bool bit(const int index) const {
         if(index >= N || index < 0) {
             throw std::overflow_error("can't access bits beyond size of fixnum");
         }
         
-        return (_data & (1 << index)) > 0 ? 1 : 0;
+        return (_data & (1 << index)) != 0;
     }
 
-    Fixnum& set_bit(const int index) {
+    Fixnum& bit(const int index, const bool val) {
         if(index >= N || index < 0) {
             throw std::overflow_error("can't access bits beyond size of fixnum");
         }
 
-        _data |= (1 << index);
-        return *this;
-    }
-
-    Fixnum& unset_bit(const int index) {
-        if(index >= N || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-
-        _data &= ~(1 << index);
+        if(val) _data |= (1 << index);
+        else _data &= ~(1 << index);
         return *this;
     }
 
@@ -1482,8 +1270,8 @@ class Fixnum<32> {
 public:
     static constexpr size_t N = 32;
     static constexpr size_t bits = N;
-    static constexpr int slots = 4;
-    static constexpr int hex_slots = slots * 2;
+    static constexpr int bytes = 4;
+    static constexpr int hex_bytes = bytes * 2;
     
     static constexpr Fixnum lowest() {
         return Fixnum(std::numeric_limits<int32_t>::lowest());
@@ -1505,7 +1293,7 @@ public:
 
     Fixnum(const std::initializer_list<uint8_t> init) : _data { 0 } {
         const uint8_t* ptr = init.begin();
-        for(int i = 0, shift_by = 0; i < init.size() && i < slots; ++i, shift_by += 8) {
+        for(int i = 0, shift_by = 0; i < init.size() && i < bytes; ++i, shift_by += 8) {
             _data |= (ptr[i] << shift_by);
         }
     }
@@ -1519,11 +1307,11 @@ public:
             return;
         }
 
-        const bool overflows = (slots * 2) < cb.converted.size();
+        const bool overflows = (bytes * 2) < cb.converted.size();
 
         int source_index, shift_by;
         for(source_index = cb.converted.size() - 1, shift_by = 0;
-            source_index >= 0 && shift_by <= 12;
+            source_index >= 0 && shift_by <= 28;
             --source_index, shift_by += 4) {
 
             _data |= (cb.converted[source_index] << shift_by);
@@ -1548,7 +1336,7 @@ public:
     }
 
     constexpr Fixnum(const int64_t val) : Fixnum() {
-        _data = val & 0xFFFFFFFF;
+        _data = val;
     }
 
     Fixnum& operator=(const Fixnum& f) {
@@ -1590,12 +1378,6 @@ public:
         return *this;
     }
     
-    Fixnum operator+(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret += n;
-        return ret;
-    }
-
     Fixnum& operator++() {
         ++_data;
         return *this;
@@ -1610,12 +1392,6 @@ public:
     Fixnum& operator-=(const Fixnum& rhs) {
         _data -= rhs._data;
         return *this;
-    }
-
-    Fixnum operator-(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret -= n;
-        return ret;
     }
 
     Fixnum& operator--() {
@@ -1638,21 +1414,9 @@ public:
         return *this;
     }
 
-    Fixnum operator*(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret *= n;
-        return ret;
-    }
-
     Fixnum& operator/=(const Fixnum& n) {
         _data /= n._data;
         return *this;
-    }
-
-    Fixnum operator/(const Fixnum& n) {
-        Fixnum ret { *this };
-        ret /= n;
-        return ret;
     }
 
     Fixnum& operator%=(const Fixnum& n) {
@@ -1660,32 +1424,14 @@ public:
         return *this;
     }
 
-    Fixnum operator%(const Fixnum& n) {
-        Fixnum ret = { *this };
-        ret %= n;
-        return ret;
-    }
-
     Fixnum& operator<<=(const int by) {
         _data <<= by;
         return *this;
     }
     
-    Fixnum operator<<(const int by) const {
-        Fixnum ret { *this };
-        ret <<= by;
-        return ret;
-    }
-
     Fixnum& operator>>=(const int by) {
         _data >>= by;
         return *this;
-    }
-
-    Fixnum operator>>(const int by) const {
-        Fixnum ret { *this };
-        ret >>= by;
-        return ret;
     }
 
     Fixnum& operator&=(const Fixnum& n) {
@@ -1693,21 +1439,9 @@ public:
         return *this;
     }
 
-    Fixnum operator&(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret &= n;
-        return ret;
-    }
-
     Fixnum& operator|=(const Fixnum& n) {
         _data |= n._data;
         return *this;
-    }
-
-    Fixnum operator|(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret |= n;
-        return ret;
     }
 
     Fixnum& operator^=(const Fixnum& n) {
@@ -1715,31 +1449,19 @@ public:
         return (*this);
     }
 
-    Fixnum operator^(const Fixnum& n) const {
-        Fixnum ret { *this };
-        ret ^= n;
-        return ret;
-    }
-
-    int operator[](const int index) const {
+    bool operator[](const int index) const {
         return bit(index);
     }
 
     int fsb() const {
-        int b = decode::first_set_bit(_data >> 24);
-        if(b > 0) {
-            return b + 24;
-        }
+        int b = decode::first_set_bit(0xFF & (_data >> 24));
+        if(b > 0) return b + 24;
 
-        b = decode::first_set_bit(_data >> 16);
-        if(b > 0) {
-            return b + 16;
-        }
+        b = decode::first_set_bit(0xFF & (_data >> 16));
+        if(b > 0) return b + 16;
 
-        b = decode::first_set_bit(_data >> 8);
-        if(b > 0) {
-            return b + 8;
-        }
+        b = decode::first_set_bit(0xFF & (_data >> 8));
+        if(b > 0) return b + 8;
         
         return decode::first_set_bit(_data & 0xFF);
     }
@@ -1777,7 +1499,7 @@ public:
             return std::string("-") + complement().str(base);
         }
         else {
-            uint8_t pos_hex[hex_slots] = { static_cast<uint8_t>(0xF & _data),
+            uint8_t pos_hex[hex_bytes] = { static_cast<uint8_t>(0xF & _data),
                                            static_cast<uint8_t>(0xF & (_data >> 4)),
                                            static_cast<uint8_t>(0xF & (_data >> 8)),
                                            static_cast<uint8_t>(0xF & (_data >> 12)),
@@ -1786,7 +1508,7 @@ public:
                                            static_cast<uint8_t>(0xF & (_data >> 24)),
                                            static_cast<uint8_t>(0xF & (_data >> 28)) };
                                            
-            std::string ret = decode::convert_pos_str<hex_slots>(pos_hex, base);
+            std::string ret = decode::convert_pos_str<hex_bytes>(pos_hex, base);
             return !is_lowest() ? ret : std::string("-") + ret;
         }
     }
@@ -1798,66 +1520,40 @@ public:
     }
 
     const uint8_t byte(const int index) const {
-        if(index > 3 || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-
-        if(index == 0) {
-            return 0xFF & _data;
-        }
-        else if(index == 1) {
-            return 0xFF & (_data >> 8);
-        }
-        else if(index == 3) {
-            return 0xFF & (_data >> 16);
-        }
-        else {
-            return 0xFF & (_data >> 24);
+        switch(index) {
+        case 0: return 0xFF & _data;
+        case 1: return 0xFF & (_data >> 8);
+        case 2: return 0xFF & (_data >> 16);
+        case 3: return 0xFF & (_data >> 24);
+        default: throw std::overflow_error("can't access bits beyond size of fixnum");
         }
     }
 
     void byte(const int index, const uint8_t b) {
-        if(index > 3 || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-
-        if(index == 0) {
-            _data = (_data & ~0xFF) | b;
-        }
-        else if(index == 1) {
-            _data = (_data & ~(0xFF << 8)) | (b << 8);
-        }
-        else if(index == 2) {
-            _data = (_data & ~(0xFF << 16)) | (b << 16);
-        }
-        else {
-            _data = (_data & ~(0xFF << 24)) | (b << 24);
+        switch(index) {
+        case 0: _data = (_data & ~0xFF) | b; break;
+        case 1: _data = (_data & ~(0xFF << 8)) | (b << 8); break;
+        case 2: _data = (_data & ~(0xFF << 16)) | (b << 16); break;
+        case 3: _data = (_data & ~(0xFF << 24)) | (b << 24); break;
+        default: throw std::overflow_error("can't access bits beyond size of fixnum");
         }
     }
 
-    int bit(const int index) const {
+    bool bit(const int index) const {
         if(index >= N || index < 0) {
             throw std::overflow_error("can't access bits beyond size of fixnum");
         }
         
-        return (_data & (1 << index)) > 0 ? 1 : 0;
+        return (_data & (1 << index)) != 0;
     }
 
-    Fixnum& set_bit(const int index) {
+    Fixnum& bit(const int index, const bool val) {
         if(index >= N || index < 0) {
             throw std::overflow_error("can't access bits beyond size of fixnum");
         }
 
-        _data |= (1 << index);
-        return *this;
-    }
-
-    Fixnum& unset_bit(const int index) {
-        if(index >= N || index < 0) {
-            throw std::overflow_error("can't access bits beyond size of fixnum");
-        }
-
-        _data &= ~(1 << index);
+        if(val) _data |= (1 << index);
+        else _data &= ~(1 << index);
         return *this;
     }
 
@@ -1876,12 +1572,345 @@ private:
     int32_t _data;
 };
 
+template<>
+class Fixnum<64> {
+public:
+    static constexpr size_t N = 64;
+    static constexpr size_t bits = N;
+    static constexpr int bytes = 8;
+    static constexpr int hex_bytes = bytes * 2;
+    
+    static constexpr Fixnum lowest() {
+        return Fixnum(std::numeric_limits<int64_t>::lowest());
+    }
+
+    static constexpr Fixnum max() {
+        return Fixnum(std::numeric_limits<int64_t>::max());
+    }
+    
+    constexpr Fixnum() : _data { 0 } {}
+
+    Fixnum(const Fixnum& f) {
+        _data = f._data;
+    }
+
+    Fixnum(Fixnum&& f) {
+        _data = f._data;
+    }
+
+    Fixnum(const std::initializer_list<uint8_t> init) : _data { 0 } {
+        const uint8_t* ptr = init.begin();
+        for(int i = 0, shift_by = 0; i < init.size() && i < bytes; ++i, shift_by += 8) {
+            _data |= (ptr[i] << shift_by);
+        }
+    }
+
+    Fixnum(const char* input, const int base) : Fixnum(decode::ConvertBase<uint8_t>(input, base, 16)) { }
+
+    Fixnum(const std::string& input, const int base) : Fixnum(decode::ConvertBase<uint8_t>(input, base, 16)) { }
+
+    Fixnum(const decode::ConvertBase<uint8_t>& cb) : Fixnum() {
+        if(cb.is_zero()) {
+            return;
+        }
+        
+        const bool overflows = (bytes * 2) < cb.converted.size();
+
+        int source_index, shift_by;
+        for(source_index = cb.converted.size() - 1, shift_by = 0;
+            source_index >= 0 && shift_by <= 60;
+            --source_index, shift_by += 4) {
+
+            _data |= (static_cast<uint64_t>(cb.converted[source_index]) << shift_by);
+        }
+
+        if(!overflows && !is_negative() && cb.is_negative()) {
+            _data = -_data;
+        }
+    }
+
+    constexpr Fixnum(const int8_t val) : Fixnum() {
+        _data = val;
+    }
+    
+    constexpr Fixnum(const int16_t val) : Fixnum() {
+        _data = val;
+    }
+    
+    constexpr Fixnum(const int32_t val) : Fixnum() {
+        _data = val;
+    }
+
+    constexpr Fixnum(const int64_t val) : Fixnum() {
+        _data = val;
+    }
+
+    Fixnum& operator=(const Fixnum& f) {
+        _data = f._data;
+        return *this;
+    }
+
+    Fixnum& operator=(Fixnum&& f) {
+        _data = f._data;
+        return *this;
+    }
+
+    bool operator==(const Fixnum& rhs) const {
+        return _data == rhs._data;
+    }
+
+    bool operator!=(const Fixnum& rhs) const {
+        return _data != rhs._data;
+    }
+
+    bool operator<(const Fixnum& rhs) const {
+        return _data < rhs._data;
+    }
+
+    bool operator<=(const Fixnum& rhs) const {
+        return _data <= rhs._data;
+    }
+
+    bool operator>(const Fixnum& rhs) const {
+        return _data > rhs._data;
+    }
+
+    bool operator>=(const Fixnum& rhs) const {
+        return _data >= rhs._data;
+    }
+
+    Fixnum& operator+=(const Fixnum& rhs) {
+        _data += rhs._data;
+        return *this;
+    }
+    
+    Fixnum& operator++() {
+        ++_data;
+        return *this;
+    }
+
+    Fixnum operator++(int) {
+        Fixnum ret { *this };
+        ++_data;
+        return ret;
+    }
+
+    Fixnum& operator-=(const Fixnum& rhs) {
+        _data -= rhs._data;
+        return *this;
+    }
+
+    Fixnum& operator--() {
+        --_data;
+        return *this;
+    }
+
+    Fixnum operator--(int) {
+        Fixnum ret { *this };
+        --_data;
+        return ret;
+    }
+
+    Fixnum operator-() const {
+        return -_data;
+    }
+
+    Fixnum& operator*=(const Fixnum& n) {
+        _data *= n._data;
+        return *this;
+    }
+
+    Fixnum& operator/=(const Fixnum& n) {
+        _data /= n._data;
+        return *this;
+    }
+
+    Fixnum& operator%=(const Fixnum& n) {
+        _data %= n._data;
+        return *this;
+    }
+
+    Fixnum& operator<<=(const int by) {
+        _data <<= by;
+        return *this;
+    }
+    
+    Fixnum& operator>>=(const int by) {
+        _data >>= by;
+        return *this;
+    }
+
+    Fixnum& operator&=(const Fixnum& n) {
+        _data &= n._data;
+        return *this;
+    }
+
+    Fixnum& operator|=(const Fixnum& n) {
+        _data |= n._data;
+        return *this;
+    }
+
+    Fixnum& operator^=(const Fixnum& n) {
+        _data ^= n._data;
+        return (*this);
+    }
+
+    bool operator[](const int index) const {
+        return bit(index);
+    }
+
+    int fsb() const {
+        int b = decode::first_set_bit(0xFF & (_data >> 56));
+        if(b > -1) return b + 56;
+
+        b = decode::first_set_bit(0xFF & (_data >> 48));
+        if(b > -1) return b + 48;
+
+        b = decode::first_set_bit(0xFF & (_data >> 40));
+        if(b > -1) return b + 40;
+
+        b = decode::first_set_bit(0xFF & (_data >> 32));
+        if(b > -1) return b + 32;
+
+        b = decode::first_set_bit(0xFF & (_data >> 24));
+        if(b > -1) return b + 24;
+        
+        b = decode::first_set_bit(0xFF & (_data >> 16));
+        if(b > -1) return b + 16;
+
+        b = decode::first_set_bit(0xFF & (_data >> 8));
+        if(b > -1) return b + 8;
+
+        return decode::first_set_bit(_data & 0xFF);
+    }
+
+    std::array<Fixnum,2> div_and_mod(const Fixnum& n) const {
+        if(n._data == 0) {
+            throw std::invalid_argument("divide by zero");
+        }
+        
+        return std::array<Fixnum,2> { Fixnum(_data / n._data), Fixnum(_data % n._data) };
+    }
+    
+    bool is_negative() const {
+        return _data < 0;
+    }
+
+    bool is_positive() const {
+        return _data > 0;
+    }
+
+    bool is_lowest() const {
+        return _data == std::numeric_limits<int64_t>::lowest(); 
+    }
+
+    bool is_max() const {
+        return _data == std::numeric_limits<int64_t>::max();
+    }
+    
+    std::string str() const {
+        return str(10);
+    }
+
+    std::string str(const int base) const {
+        if(is_negative() && !is_lowest()) {
+            return std::string("-") + complement().str(base);
+        }
+        else {
+            uint8_t pos_hex[hex_bytes] = { static_cast<uint8_t>(0xF & _data),
+                                           static_cast<uint8_t>(0xF & (_data >> 4)),
+                                           static_cast<uint8_t>(0xF & (_data >> 8)),
+                                           static_cast<uint8_t>(0xF & (_data >> 12)),
+                                           static_cast<uint8_t>(0xF & (_data >> 16)),
+                                           static_cast<uint8_t>(0xF & (_data >> 20)),
+                                           static_cast<uint8_t>(0xF & (_data >> 24)),
+                                           static_cast<uint8_t>(0xF & (_data >> 28)),
+                                           static_cast<uint8_t>(0xF & (_data >> 32)),
+                                           static_cast<uint8_t>(0xF & (_data >> 36)),
+                                           static_cast<uint8_t>(0xF & (_data >> 40)),
+                                           static_cast<uint8_t>(0xF & (_data >> 44)),
+                                           static_cast<uint8_t>(0xF & (_data >> 48)),
+                                           static_cast<uint8_t>(0xF & (_data >> 52)),
+                                           static_cast<uint8_t>(0xF & (_data >> 56)),
+                                           static_cast<uint8_t>(0xF & (_data >> 60)) };
+                                           
+            std::string ret = decode::convert_pos_str<hex_bytes>(pos_hex, base);
+            return !is_lowest() ? ret : std::string("-") + ret;
+        }
+    }
+
+    Fixnum complement() const {
+        Fixnum ret { *this };
+        ret._data = -ret._data;
+        return ret;
+    }
+
+    const uint8_t byte(const int index) const {
+        switch(index) {
+        case 0: return 0xFF & _data;
+        case 1: return 0xFF & (_data >> 8);
+        case 2: return 0xFF & (_data >> 16);
+        case 3: return 0xFF & (_data >> 24);
+        case 4: return 0xFF & (_data >> 32);
+        case 5: return 0xFF & (_data >> 40);
+        case 6: return 0xFF & (_data >> 48);
+        case 7: return 0xFF & (_data >> 56);
+        default: throw std::overflow_error("can't access bits beyond size of fixnum");
+        }
+    }
+
+    void byte(const int index, const uint8_t b) {
+        switch(index) {
+        case 0: _data = (_data & ~0xFFL) | static_cast<int64_t>(b); break;
+        case 1: _data = (_data & ~(0xFFL << 8)) | (static_cast<int64_t>(b) << 8); break;
+        case 2: _data = (_data & ~(0xFFL << 16)) | (static_cast<int64_t>(b) << 16); break;
+        case 3: _data = (_data & ~(0xFFL << 24)) | (static_cast<int64_t>(b) << 24); break;
+        case 4: _data = (_data & ~(0xFFL << 32)) | (static_cast<int64_t>(b) << 32); break;
+        case 5: _data = (_data & ~(0xFFL << 40)) | (static_cast<int64_t>(b) << 40); break;
+        case 6: _data = (_data & ~(0xFFL << 48)) | (static_cast<int64_t>(b) << 48); break;
+        case 7: _data = (_data & ~(0xFFL << 56)) | (static_cast<int64_t>(b) << 56); break;
+        default: throw std::overflow_error("can't access bits beyond size of fixnum");
+        }
+    }
+
+    bool bit(const int index) const {
+        if(index >= N || index < 0) {
+            throw std::overflow_error("can't access bits beyond size of fixnum");
+        }
+        
+        return (_data & (1L << index)) != 0;
+    }
+
+    Fixnum& bit(const int index, const bool val) {
+        if(index >= N || index < 0) {
+            throw std::overflow_error("can't access bits beyond size of fixnum");
+        }
+
+        if(val) _data |= (1L << index);
+        else _data &= ~(1L << index);
+        return *this;
+    }
+
+    void sign_extend(const int bit) {
+        const int extension = (_data & (1 << bit)) > 0 ? 1 : 0;
+
+        if(extension) {
+            _data |= (0xFFFFFFFFFFFFFFFFL << (bit+1));
+        }
+        else {
+            _data &= (0xFFFFFFFFFFFFFFFFL >> (8-(bit+1)));
+        }
+    }
+    
+private:
+    int64_t _data;
+};
 
 template<size_t T, size_t S>
 Fixnum<T> fixnum_cast(const Fixnum<S>& source) {
     Fixnum<T> ret { 0 };
     
-    for(int i = 0; i < Fixnum<T>::slots && i < Fixnum<S>::slots; ++i) {
+    for(int i = 0; i < Fixnum<T>::bytes && i < Fixnum<S>::bytes; ++i) {
         ret.byte(i, source.byte(i));
     }
     
@@ -1890,6 +1919,224 @@ Fixnum<T> fixnum_cast(const Fixnum<S>& source) {
     }
     
     return ret;
+}
+
+//+ operators
+template<size_t N>
+Fixnum<N> operator+(const Fixnum<N>& one, const Fixnum<N>& two) {
+    Fixnum<N> ret { one };
+    ret += two;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator+(const Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    Fixnum<N> ret { one };
+    ret += val;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator+(const T val, const Fixnum<N>& one) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return operator+(one, val);
+}
+
+template<size_t N, typename T>
+Fixnum<N>& operator+=(Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return one += Fixnum<N>(val);
+}
+
+//- operators
+template<size_t N>
+Fixnum<N> operator-(const Fixnum<N>& one, const Fixnum<N>& two) {
+    Fixnum<N> ret { one };
+    ret -= two;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N>& operator-=(Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return one -= Fixnum<N>(val);
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator-(const Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    Fixnum<N> ret { one };
+    ret -= val;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator-(const T val, const Fixnum<N>& one) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    Fixnum<N> ret(val);
+    ret -= one;
+    return ret;
+}
+
+//* operators
+template<size_t N>
+Fixnum<N> operator*(const Fixnum<N>& one, const Fixnum<N>& two) {
+    Fixnum<N> ret { one };
+    ret *= two;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N>& operator*=(Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return one *= Fixnum<N>(val);
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator*(const Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    Fixnum<N> ret { one };
+    ret *= val;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator*(const T val, const Fixnum<N>& one) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return operator*(one, val);
+}
+
+/// operators
+template<size_t N>
+Fixnum<N> operator/(const Fixnum<N>& one, const Fixnum<N>& two) {
+    Fixnum<N> ret { one };
+    ret /= two;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N>& operator/=(Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return one /= Fixnum<N>(val);
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator/(const Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    Fixnum<N> ret { one };
+    ret /= val;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator/(const T val, const Fixnum<N>& one) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    Fixnum<N> ret(val);
+    ret /= one;
+    return ret;
+}
+
+//% operators
+template<size_t N>
+Fixnum<N> operator%(const Fixnum<N>& one, const Fixnum<N>& two) {
+    Fixnum<N> ret { one };
+    ret %= two;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N>& operator%=(Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return one %= Fixnum<N>(val);
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator%(const Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    Fixnum<N> ret { one };
+    ret %= val;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N> operator%(const T val, const Fixnum<N>& one) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    Fixnum<N> ret(val);
+    ret %= one;
+    return ret;
+}
+
+//bitwise operators
+template<size_t N>
+Fixnum<N> operator<<(const Fixnum<N>& one, const int by) {
+    Fixnum<N> ret { one };
+    ret <<= by;
+    return ret;
+}
+
+template<size_t N>
+Fixnum<N> operator>>(const Fixnum<N>& one, const int by) {
+    Fixnum<N> ret { one };
+    ret >>= by;
+    return ret;
+}
+
+template<size_t N>
+Fixnum<N> operator&(const Fixnum<N>& one, const Fixnum<N>& two) {
+    Fixnum<N> ret { one };
+    ret &= two;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N>& operator&=(Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return one &= Fixnum<N>(val);
+}
+
+template<size_t N>
+Fixnum<N> operator|(const Fixnum<N>& one, const Fixnum<N>& two) {
+    Fixnum<N> ret { one };
+    ret |= two;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N>& operator|=(Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return one |= Fixnum<N>(val);
+}
+
+template<size_t N>
+Fixnum<N> operator^(const Fixnum<N>& one, const Fixnum<N>& two) {
+    Fixnum<N> ret { one };
+    ret ^= two;
+    return ret;
+}
+
+template<size_t N, typename T>
+Fixnum<N>& operator^=(Fixnum<N>& one, const T val) {
+    static_assert(std::is_integral<T>::value, "T must be integral type");
+    
+    return one ^= Fixnum<N>(val);
 }
 
 #endif
