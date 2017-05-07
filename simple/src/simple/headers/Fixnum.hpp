@@ -101,7 +101,7 @@ public:
             _truncate();
         }
     }
-    
+
     Fixnum(const int32_t val) : Fixnum() {
         _data[0] = val & 0xFF;
         if(bytes >= 2) _data[1] = (val >> 8) & 0xFF;
@@ -117,7 +117,9 @@ public:
         }
     }
 
-    Fixnum(const int64_t val) : Fixnum(0) {
+    Fixnum(const long val) : Fixnum(static_cast<int64_t>(val)) {}
+
+    Fixnum(const int64_t val) : Fixnum() {
         _data[0] = val & 0xFF;
         if(bytes >= 2) _data[1] = (val >> 8) & 0xFF;
         if(bytes >= 3) _data[2] = (val >> 16) & 0xFF;
@@ -708,8 +710,8 @@ public:
     static Fixnum max() {
         return Fixnum(std::numeric_limits<int8_t>::max());
     }
-    
-    Fixnum() : _data { 0 } {}
+
+    Fixnum() : Fixnum(static_cast<int8_t>(0)) {}
 
     Fixnum(const Fixnum& f) {
         _data = f._data;
@@ -749,21 +751,15 @@ public:
         }
     }
 
-    Fixnum(const int8_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int8_t d) : _data { d } {}
     
-    Fixnum(const int16_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int16_t val) : Fixnum(static_cast<int8_t>(val)) {}
     
-    Fixnum(const int32_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int32_t val) : Fixnum(static_cast<int8_t>(val)) {}
 
-    Fixnum(const int64_t val) : Fixnum(0) {
-        _data = val;
-    }
+    Fixnum(const long val) : Fixnum(static_cast<int8_t>(val)) {}
+    
+    Fixnum(const int64_t val) : Fixnum(static_cast<int8_t>(val)) {}
 
     Fixnum& operator=(const Fixnum& f) {
         _data = f._data;
@@ -988,7 +984,7 @@ public:
         return Fixnum(std::numeric_limits<int16_t>::max());
     }
     
-    Fixnum() : _data { 0 } {}
+    Fixnum() : Fixnum(static_cast<int16_t>(0)) {}
 
     Fixnum(const Fixnum& f) {
         _data = f._data;
@@ -1029,21 +1025,15 @@ public:
         }
     }
 
-    Fixnum(const int8_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int8_t val) : Fixnum(static_cast<int16_t>(val)) {}
     
-    Fixnum(const int16_t val) : Fixnum() {
-        _data = val;
-    }
-    
-    Fixnum(const int32_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int16_t val) : _data { val } {}
 
-    Fixnum(const int64_t val) : Fixnum(0) {
-        _data = val;
-    }
+    Fixnum(const int32_t val) : Fixnum(static_cast<int16_t>(val)) {}
+
+    Fixnum(const long val) : Fixnum(static_cast<int16_t>(val)) {}
+    
+    Fixnum(const int64_t val) : Fixnum(static_cast<int16_t>(val)) {}
 
     Fixnum& operator=(const Fixnum& f) {
         _data = f._data;
@@ -1280,7 +1270,7 @@ public:
         return Fixnum(std::numeric_limits<int32_t>::max());
     }
     
-    Fixnum() : _data { 0 } {}
+    Fixnum() : Fixnum(0) {}
 
     Fixnum(const Fixnum& f) {
         _data = f._data;
@@ -1322,21 +1312,15 @@ public:
         }
     }
 
-    Fixnum(const int8_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int8_t val) : Fixnum(static_cast<int32_t>(val)) {}
     
-    Fixnum(const int16_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int16_t val) : Fixnum(static_cast<int32_t>(val)) {}
     
-    Fixnum(const int32_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int32_t val) : _data { val } {}
 
-    Fixnum(const int64_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const long val) : Fixnum(static_cast<int32_t>(val)) {}
+    
+    Fixnum(const int64_t val) : Fixnum(static_cast<int32_t>(val)) {}
 
     Fixnum& operator=(const Fixnum& f) {
         _data = f._data;
@@ -1587,7 +1571,7 @@ public:
         return Fixnum(std::numeric_limits<int64_t>::max());
     }
     
-    Fixnum() : _data { 0 } {}
+    Fixnum() : Fixnum(static_cast<int64_t>(0)) {}
 
     Fixnum(const Fixnum& f) {
         _data = f._data;
@@ -1628,21 +1612,15 @@ public:
         }
     }
 
-    Fixnum(const int8_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int8_t val) : Fixnum(static_cast<int64_t>(val)) {}
     
-    Fixnum(const int16_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int16_t val) : Fixnum(static_cast<int64_t>(val)) {}
     
-    Fixnum(const int32_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const int32_t val) : Fixnum(static_cast<int64_t>(val)) {}
 
-    Fixnum(const int64_t val) : Fixnum() {
-        _data = val;
-    }
+    Fixnum(const long val) : Fixnum(static_cast<int64_t>(val)) {}
+
+    Fixnum(const int64_t val) : _data { val } {}
 
     Fixnum& operator=(const Fixnum& f) {
         _data = f._data;
