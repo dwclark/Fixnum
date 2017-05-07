@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <limits>
 #include <chrono>
+#include <climits>
 
 #define NDEBUG 1
 
@@ -755,4 +756,6 @@ int main(int argc, char* argv[]) {
     auto end2 = system_clock::now();
 
     std::cout << "target2: " << target2.str() << " " << nanoseconds(end2 - start2).count() << std::endl;
+
+    std::cout << "LONG_MAX: " << LONG_MAX << " LLONG_MAX: " << LLONG_MAX << std::endl;
 }
