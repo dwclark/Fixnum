@@ -27,7 +27,7 @@ namespace decode {
     template<typename T>
     class ConvertBase {
     public:
-        ConvertBase(const std::string& input, const int base, const int target) {
+        ConvertBase(const std::string& input, const int base, const int target) : sign('+'){
             if(input.length() == 0) {
                 return;
             }
@@ -48,7 +48,7 @@ namespace decode {
             converted = convert_base(working, base, target);
         }
 
-        ConvertBase(const char* input, const int base, const int target) {
+        ConvertBase(const char* input, const int base, const int target) : sign('+') {
             char tmp_str[2] = { 0, 0 };
             const int length = strlen(input);
             if(length == 0) {

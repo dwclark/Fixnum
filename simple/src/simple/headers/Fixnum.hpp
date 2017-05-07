@@ -1022,7 +1022,6 @@ public:
             --source_index, shift_by += 4) {
 
             _data |= (cb.converted[source_index] << shift_by);
-
         }
 
         if(!overflows && !is_negative() && cb.is_negative()) {
@@ -1204,9 +1203,9 @@ public:
                                            static_cast<uint8_t>(0xF & (_data >> 4)),
                                            static_cast<uint8_t>(0xF & (_data >> 8)),
                                            static_cast<uint8_t>(0xF & (_data >> 12)) };
-                                           
+
             std::string ret = decode::convert_pos_str<hex_bytes>(pos_hex, base);
-            return !is_lowest() ? ret : std::string("-") + ret;
+            return !is_lowest() ? ret : (std::string("-") + ret);
         }
     }
 

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <algorithm>
 #include <limits>
+#include <chrono>
 
 #define NDEBUG 1
 
@@ -631,6 +632,7 @@ void test_string_constructors() {
     assert(two.str(16) == "-F");
 
     bit16 one16("7FFF", 16);
+    assert(bit16("7FFF", 16) == bit16("7FFF", 16));
     assert(one16.str(16) == "7FFF");
 
     bit16 two16("8000", 16);
@@ -703,7 +705,8 @@ int main(int argc, char* argv[]) {
 
     using namespace decode;
     using namespace std;
-
+    using namespace std::chrono;
+    
     test_to_division_vector();
     test_convert_base();
     test_convert_to_digits();
@@ -734,4 +737,22 @@ int main(int argc, char* argv[]) {
 
     test_large_numbers();
     test_int_adds();
+
+    auto start = system_clock::now();
+    int target = 0;
+    for(int i = 0; i < 200000000; ++i) {
+        target += i;
+    }
+    auto end = system_clock::now();
+
+    std::cout << "target: " << target << " " << nanoseconds(end - start).count() << std::endl;
+
+    auto start2 = system_clock::now();
+    bit32 target2;
+    for(int i = 0; i < 200000000; ++i) {
+        target2 += i;
+    }
+    auto end2 = system_clock::now();
+
+    std::cout << "target2: " << target2.str() << " " << nanoseconds(end2 - start2).count() << std::endl;
 }
